@@ -1,22 +1,22 @@
 1<?xml version="1.0" encoding="utf-8"?>
 2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
 3    package="com.instadownloader"
-4    android:versionCode="16"
-5    android:versionName="1.15" >
+4    android:versionCode="17"
+5    android:versionName="1.16" >
 6
 7    <uses-sdk
 8        android:minSdkVersion="24"
 9        android:targetSdkVersion="34" />
 10
 11    <uses-permission android:name="android.permission.INTERNET" />
-11-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:4:5-67
-11-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:4:22-64
+11-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:4:5-67
+11-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:4:22-64
 12    <uses-permission
-12-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:5:5-6:38
+12-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:5:5-6:38
 13        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-13-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:5:22-78
+13-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:5:22-78
 14        android:maxSdkVersion="28" />
-14-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:6:9-35
+14-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:6:9-35
 15
 16    <permission
 16-->[androidx.core:core:1.12.0] /Users/isayama/.gradle/caches/transforms-3/2916ab2c1440ffa3fec3355c5414291a/transformed/core-1.12.0/AndroidManifest.xml:22:5-24:47
@@ -30,152 +30,191 @@
 20-->[androidx.core:core:1.12.0] /Users/isayama/.gradle/caches/transforms-3/2916ab2c1440ffa3fec3355c5414291a/transformed/core-1.12.0/AndroidManifest.xml:26:22-94
 21
 22    <application
-22-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:8:5-41:19
+22-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:8:5-51:19
 23        android:allowBackup="true"
-23-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:9:9-35
+23-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:9:9-35
 24        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
 24-->[androidx.core:core:1.12.0] /Users/isayama/.gradle/caches/transforms-3/2916ab2c1440ffa3fec3355c5414291a/transformed/core-1.12.0/AndroidManifest.xml:28:18-86
 25        android:debuggable="true"
 26        android:extractNativeLibs="false"
 27        android:icon="@mipmap/ic_launcher"
-27-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:10:9-43
+27-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:10:9-43
 28        android:label="@string/app_name"
-28-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:11:9-41
+28-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:11:9-41
 29        android:networkSecurityConfig="@xml/network_security_config"
-29-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:15:9-69
+29-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:15:9-69
 30        android:roundIcon="@mipmap/ic_launcher_round"
-30-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:12:9-54
+30-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:12:9-54
 31        android:supportsRtl="true"
-31-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:13:9-35
+31-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:13:9-35
 32        android:theme="@style/Theme.InstaDownloader" >
-32-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:14:9-53
+32-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:14:9-53
 33        <activity
-33-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:17:9-39:20
+33-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:17:9-49:20
 34            android:name="com.instadownloader.MainActivity"
-34-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:18:13-41
+34-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:18:13-41
 35            android:exported="true"
-35-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:19:13-36
+35-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:19:13-36
 36            android:windowSoftInputMode="adjustResize" >
-36-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:20:13-55
+36-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:20:13-55
 37            <intent-filter>
-37-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:21:13-24:29
+37-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:21:13-24:29
 38                <action android:name="android.intent.action.MAIN" />
-38-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:22:17-69
-38-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:22:25-66
+38-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:22:17-69
+38-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:22:25-66
 39
 40                <category android:name="android.intent.category.LAUNCHER" />
-40-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:23:17-77
-40-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:23:27-74
+40-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:23:17-77
+40-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:23:27-74
 41            </intent-filter>
 42            <!-- Accept shared Instagram URLs from other apps -->
 43            <intent-filter>
-43-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:26:13-30:29
+43-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:26:13-30:29
 44                <action android:name="android.intent.action.SEND" />
-44-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:27:17-69
-44-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:27:25-66
+44-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:27:17-69
+44-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:27:25-66
 45
 46                <category android:name="android.intent.category.DEFAULT" />
-46-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:28:17-76
-46-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:28:27-73
+46-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:28:17-76
+46-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:28:27-73
 47
 48                <data android:mimeType="text/plain" />
-48-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:29:17-55
-48-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:29:23-52
+48-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:29:17-55
+48-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:29:23-52
 49            </intent-filter>
 50            <!-- Accept Instagram links opened directly -->
 51            <intent-filter>
-51-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:32:13-38:29
+51-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:32:13-38:29
 52                <action android:name="android.intent.action.VIEW" />
-52-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:33:17-69
-52-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:33:25-66
+52-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:33:17-69
+52-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:33:25-66
 53
 54                <category android:name="android.intent.category.DEFAULT" />
-54-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:28:17-76
-54-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:28:27-73
+54-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:28:17-76
+54-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:28:27-73
 55                <category android:name="android.intent.category.BROWSABLE" />
-55-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:35:17-78
-55-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:35:27-75
+55-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:35:17-78
+55-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:35:27-75
 56
 57                <data
-57-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:29:17-55
+57-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:29:17-55
 58                    android:host="www.instagram.com"
-58-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:36:46-78
+58-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:36:46-78
 59                    android:scheme="https" />
-59-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:36:23-45
+59-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:36:23-45
 60                <data
-60-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:29:17-55
+60-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:29:17-55
 61                    android:host="instagram.com"
-61-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:36:46-78
+61-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:36:46-78
 62                    android:scheme="https" />
-62-->/Users/isayama/Downloads/insta/InstaDownloader/app/src/main/AndroidManifest.xml:36:23-45
+62-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:36:23-45
 63            </intent-filter>
-64        </activity>
-65
-66        <provider
-66-->[androidx.emoji2:emoji2:1.2.0] /Users/isayama/.gradle/caches/transforms-3/19404872e72bac14ee1bde9370c9ce28/transformed/emoji2-1.2.0/AndroidManifest.xml:24:9-32:20
-67            android:name="androidx.startup.InitializationProvider"
-67-->[androidx.emoji2:emoji2:1.2.0] /Users/isayama/.gradle/caches/transforms-3/19404872e72bac14ee1bde9370c9ce28/transformed/emoji2-1.2.0/AndroidManifest.xml:25:13-67
-68            android:authorities="com.instadownloader.androidx-startup"
-68-->[androidx.emoji2:emoji2:1.2.0] /Users/isayama/.gradle/caches/transforms-3/19404872e72bac14ee1bde9370c9ce28/transformed/emoji2-1.2.0/AndroidManifest.xml:26:13-68
-69            android:exported="false" >
-69-->[androidx.emoji2:emoji2:1.2.0] /Users/isayama/.gradle/caches/transforms-3/19404872e72bac14ee1bde9370c9ce28/transformed/emoji2-1.2.0/AndroidManifest.xml:27:13-37
-70            <meta-data
-70-->[androidx.emoji2:emoji2:1.2.0] /Users/isayama/.gradle/caches/transforms-3/19404872e72bac14ee1bde9370c9ce28/transformed/emoji2-1.2.0/AndroidManifest.xml:29:13-31:52
-71                android:name="androidx.emoji2.text.EmojiCompatInitializer"
-71-->[androidx.emoji2:emoji2:1.2.0] /Users/isayama/.gradle/caches/transforms-3/19404872e72bac14ee1bde9370c9ce28/transformed/emoji2-1.2.0/AndroidManifest.xml:30:17-75
-72                android:value="androidx.startup" />
-72-->[androidx.emoji2:emoji2:1.2.0] /Users/isayama/.gradle/caches/transforms-3/19404872e72bac14ee1bde9370c9ce28/transformed/emoji2-1.2.0/AndroidManifest.xml:31:17-49
-73            <meta-data
-73-->[androidx.lifecycle:lifecycle-process:2.6.1] /Users/isayama/.gradle/caches/transforms-3/334756d8056696c30284f24584de6907/transformed/lifecycle-process-2.6.1/AndroidManifest.xml:29:13-31:52
-74                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
-74-->[androidx.lifecycle:lifecycle-process:2.6.1] /Users/isayama/.gradle/caches/transforms-3/334756d8056696c30284f24584de6907/transformed/lifecycle-process-2.6.1/AndroidManifest.xml:30:17-78
-75                android:value="androidx.startup" />
-75-->[androidx.lifecycle:lifecycle-process:2.6.1] /Users/isayama/.gradle/caches/transforms-3/334756d8056696c30284f24584de6907/transformed/lifecycle-process-2.6.1/AndroidManifest.xml:31:17-49
-76            <meta-data
-76-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:29:13-31:52
-77                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
-77-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:30:17-85
-78                android:value="androidx.startup" />
-78-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:31:17-49
-79        </provider>
-80
-81        <receiver
-81-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:34:9-52:20
-82            android:name="androidx.profileinstaller.ProfileInstallReceiver"
-82-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:35:13-76
-83            android:directBootAware="false"
-83-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:36:13-44
-84            android:enabled="true"
-84-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:37:13-35
-85            android:exported="true"
-85-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:38:13-36
-86            android:permission="android.permission.DUMP" >
-86-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:39:13-57
-87            <intent-filter>
-87-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:40:13-42:29
-88                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
-88-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:41:17-91
-88-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:41:25-88
-89            </intent-filter>
-90            <intent-filter>
-90-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:43:13-45:29
-91                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
-91-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:44:17-85
-91-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:44:25-82
-92            </intent-filter>
-93            <intent-filter>
-93-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:46:13-48:29
-94                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
-94-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:47:17-88
-94-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:47:25-85
-95            </intent-filter>
-96            <intent-filter>
-96-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:49:13-51:29
-97                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
-97-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:50:17-95
-97-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:50:25-92
-98            </intent-filter>
-99        </receiver>
-100    </application>
-101
-102</manifest>
+64            <!-- Accept RedNote (小红书) links opened directly -->
+65            <intent-filter>
+65-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:40:13-48:29
+66                <action android:name="android.intent.action.VIEW" />
+66-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:33:17-69
+66-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:33:25-66
+67
+68                <category android:name="android.intent.category.DEFAULT" />
+68-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:28:17-76
+68-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:28:27-73
+69                <category android:name="android.intent.category.BROWSABLE" />
+69-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:35:17-78
+69-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:35:27-75
+70
+71                <data
+71-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:29:17-55
+72                    android:host="www.xiaohongshu.com"
+72-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:36:46-78
+73                    android:scheme="https" />
+73-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:36:23-45
+74                <data
+74-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:29:17-55
+75                    android:host="xiaohongshu.com"
+75-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:36:46-78
+76                    android:scheme="https" />
+76-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:36:23-45
+77                <data
+77-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:29:17-55
+78                    android:host="www.rednote.com"
+78-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:36:46-78
+79                    android:scheme="https" />
+79-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:36:23-45
+80                <data
+80-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:29:17-55
+81                    android:host="rednote.com"
+81-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:36:46-78
+82                    android:scheme="https" />
+82-->/Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:36:23-45
+83            </intent-filter>
+84        </activity>
+85
+86        <provider
+86-->[androidx.emoji2:emoji2:1.2.0] /Users/isayama/.gradle/caches/transforms-3/19404872e72bac14ee1bde9370c9ce28/transformed/emoji2-1.2.0/AndroidManifest.xml:24:9-32:20
+87            android:name="androidx.startup.InitializationProvider"
+87-->[androidx.emoji2:emoji2:1.2.0] /Users/isayama/.gradle/caches/transforms-3/19404872e72bac14ee1bde9370c9ce28/transformed/emoji2-1.2.0/AndroidManifest.xml:25:13-67
+88            android:authorities="com.instadownloader.androidx-startup"
+88-->[androidx.emoji2:emoji2:1.2.0] /Users/isayama/.gradle/caches/transforms-3/19404872e72bac14ee1bde9370c9ce28/transformed/emoji2-1.2.0/AndroidManifest.xml:26:13-68
+89            android:exported="false" >
+89-->[androidx.emoji2:emoji2:1.2.0] /Users/isayama/.gradle/caches/transforms-3/19404872e72bac14ee1bde9370c9ce28/transformed/emoji2-1.2.0/AndroidManifest.xml:27:13-37
+90            <meta-data
+90-->[androidx.emoji2:emoji2:1.2.0] /Users/isayama/.gradle/caches/transforms-3/19404872e72bac14ee1bde9370c9ce28/transformed/emoji2-1.2.0/AndroidManifest.xml:29:13-31:52
+91                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+91-->[androidx.emoji2:emoji2:1.2.0] /Users/isayama/.gradle/caches/transforms-3/19404872e72bac14ee1bde9370c9ce28/transformed/emoji2-1.2.0/AndroidManifest.xml:30:17-75
+92                android:value="androidx.startup" />
+92-->[androidx.emoji2:emoji2:1.2.0] /Users/isayama/.gradle/caches/transforms-3/19404872e72bac14ee1bde9370c9ce28/transformed/emoji2-1.2.0/AndroidManifest.xml:31:17-49
+93            <meta-data
+93-->[androidx.lifecycle:lifecycle-process:2.6.1] /Users/isayama/.gradle/caches/transforms-3/334756d8056696c30284f24584de6907/transformed/lifecycle-process-2.6.1/AndroidManifest.xml:29:13-31:52
+94                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+94-->[androidx.lifecycle:lifecycle-process:2.6.1] /Users/isayama/.gradle/caches/transforms-3/334756d8056696c30284f24584de6907/transformed/lifecycle-process-2.6.1/AndroidManifest.xml:30:17-78
+95                android:value="androidx.startup" />
+95-->[androidx.lifecycle:lifecycle-process:2.6.1] /Users/isayama/.gradle/caches/transforms-3/334756d8056696c30284f24584de6907/transformed/lifecycle-process-2.6.1/AndroidManifest.xml:31:17-49
+96            <meta-data
+96-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:29:13-31:52
+97                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+97-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:30:17-85
+98                android:value="androidx.startup" />
+98-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:31:17-49
+99        </provider>
+100
+101        <receiver
+101-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:34:9-52:20
+102            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+102-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:35:13-76
+103            android:directBootAware="false"
+103-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:36:13-44
+104            android:enabled="true"
+104-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:37:13-35
+105            android:exported="true"
+105-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:38:13-36
+106            android:permission="android.permission.DUMP" >
+106-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:39:13-57
+107            <intent-filter>
+107-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:40:13-42:29
+108                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+108-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:41:17-91
+108-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:41:25-88
+109            </intent-filter>
+110            <intent-filter>
+110-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:43:13-45:29
+111                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+111-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:44:17-85
+111-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:44:25-82
+112            </intent-filter>
+113            <intent-filter>
+113-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:46:13-48:29
+114                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+114-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:47:17-88
+114-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:47:25-85
+115            </intent-filter>
+116            <intent-filter>
+116-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:49:13-51:29
+117                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+117-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:50:17-95
+117-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/isayama/.gradle/caches/transforms-3/7b7aa9fdf7f74accce9a8a998af212c3/transformed/profileinstaller-1.3.0/AndroidManifest.xml:50:25-92
+118            </intent-filter>
+119        </receiver>
+120    </application>
+121
+122</manifest>

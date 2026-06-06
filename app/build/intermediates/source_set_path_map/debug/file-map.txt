@@ -25,10 +25,10 @@ com.instadownloader.app-lifecycle-livedata-2.6.1-23 /Users/isayama/.gradle/cache
 com.instadownloader.app-core-runtime-2.2.0-24 /Users/isayama/.gradle/caches/transforms-3/f22651cdc4418578a07bdb544c96189b/transformed/core-runtime-2.2.0/res
 com.instadownloader.app-lifecycle-viewmodel-2.6.1-25 /Users/isayama/.gradle/caches/transforms-3/fe80808f8d99c65b1b5d24376bdab787/transformed/lifecycle-viewmodel-2.6.1/res
 com.instadownloader.app-lifecycle-viewmodel-savedstate-2.6.1-26 /Users/isayama/.gradle/caches/transforms-3/ffceb83313ac5ee364e93a3777931b49/transformed/lifecycle-viewmodel-savedstate-2.6.1/res
-com.instadownloader.app-pngs-27 /Users/isayama/Downloads/insta/InstaDownloader/app/build/generated/res/pngs/debug
-com.instadownloader.app-resValues-28 /Users/isayama/Downloads/insta/InstaDownloader/app/build/generated/res/resValues/debug
-com.instadownloader.app-packageDebugResources-29 /Users/isayama/Downloads/insta/InstaDownloader/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
-com.instadownloader.app-packageDebugResources-30 /Users/isayama/Downloads/insta/InstaDownloader/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
-com.instadownloader.app-merged_res-31 /Users/isayama/Downloads/insta/InstaDownloader/app/build/intermediates/merged_res/debug
-com.instadownloader.app-debug-32 /Users/isayama/Downloads/insta/InstaDownloader/app/src/debug/res
-com.instadownloader.app-main-33 /Users/isayama/Downloads/insta/InstaDownloader/app/src/main/res
+com.instadownloader.app-pngs-27 /Users/isayama/MyRepo/InstaDownloader/app/build/generated/res/pngs/debug
+com.instadownloader.app-resValues-28 /Users/isayama/MyRepo/InstaDownloader/app/build/generated/res/resValues/debug
+com.instadownloader.app-packageDebugResources-29 /Users/isayama/MyRepo/InstaDownloader/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
+com.instadownloader.app-packageDebugResources-30 /Users/isayama/MyRepo/InstaDownloader/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
+com.instadownloader.app-merged_res-31 /Users/isayama/MyRepo/InstaDownloader/app/build/intermediates/merged_res/debug
+com.instadownloader.app-debug-32 /Users/isayama/MyRepo/InstaDownloader/app/src/debug/res
+com.instadownloader.app-main-33 /Users/isayama/MyRepo/InstaDownloader/app/src/main/res

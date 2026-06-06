@@ -4,5 +4,10 @@
         <domain includeSubdomains="true">instagram.com</domain>
         <domain includeSubdomains="true">cdninstagram.com</domain>
         <domain includeSubdomains="true">fbcdn.net</domain>
+        <domain includeSubdomains="true">xiaohongshu.com</domain>
+        <domain includeSubdomains="true">xhscdn.com</domain>
+        <domain includeSubdomains="true">xhslink.com</domain>
+        <domain includeSubdomains="true">rednote.com</domain>
+        <domain includeSubdomains="true">rednotecdn.com</domain>
     </domain-config>
 </network-security-config>

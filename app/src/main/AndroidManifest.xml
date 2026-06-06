@@ -36,6 +36,16 @@
                 <data android:scheme="https" android:host="www.instagram.com" />
                 <data android:scheme="https" android:host="instagram.com" />
             </intent-filter>
+            <!-- Accept RedNote (小红书) links opened directly -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="www.xiaohongshu.com" />
+                <data android:scheme="https" android:host="xiaohongshu.com" />
+                <data android:scheme="https" android:host="www.rednote.com" />
+                <data android:scheme="https" android:host="rednote.com" />
+            </intent-filter>
         </activity>
 
     </application>

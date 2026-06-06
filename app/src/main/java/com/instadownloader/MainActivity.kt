@@ -45,17 +45,22 @@ class MainActivity : AppCompatActivity() {
     // Suppresses TextWatcher auto-load during Activity state restoration on app open.
     // Set to true in onResume() — which fires AFTER onRestoreInstanceState().
     private var readyForAutoLoad = false
-    // True only when the user explicitly loaded a URL via loadInstagram().
+    // True only when the user explicitly loaded a URL via loadUrl().
     // Auto-download and CDN capture are gated on this so nothing runs without user action.
     private var activeDownloadSession = false
     // Set to true only when we actually see a login page; prevents isAfterLogin false positives
     // when the WebView navigates to the Instagram home page for other reasons.
     private var justLoggedIn = false
+    // Which platform the current session belongs to: "instagram" or "rednote"
+    private var currentPlatform = "instagram"
+    // Track the last URL we ran media extraction on, so redirect chains (e.g. xhslink.com →
+    // xiaohongshu.com) don't get blocked by the downloadTriggered guard on the final URL.
+    private var lastExtractedUrl: String? = null
 
-    data class MediaItem(val type: String, val url: String, val filename: String)
+    data class MediaItem(val type: String, val url: String, val filename: String, val source: String = "instagram")
 
     companion object {
-        // WebView UA — what Instagram sees when browsing
+        // WebView UA — what sites see when browsing
         const val UA = "Mozilla/5.0 (Linux; Android 13; Pixel 7) " +
             "AppleWebKit/537.36 (KHTML, like Gecko) " +
             "Chrome/120.0.6099.144 Mobile Safari/537.36"
@@ -72,11 +77,16 @@ class MainActivity : AppCompatActivity() {
 
         const val REQ_WRITE_STORAGE = 1001
 
-        /** Extract the post/reel shortcode from a URL, or null if not a post URL */
+        /** Extract the post/reel shortcode from an Instagram URL, or null if not a post URL */
         fun shortcodeFrom(url: String): String? {
             val regex = Regex("instagram\\.com/(?:p|reel|reels)/([A-Za-z0-9_-]+)")
             return regex.find(url)?.groupValues?.get(1)
         }
+
+        /** Return true if the URL belongs to RedNote (小红书), including short links */
+        fun isRedNoteUrl(url: String) =
+            url.contains("xiaohongshu.com") || url.contains("rednote.com") ||
+            url.contains("xhslink.com")
     }
 
     inner class WebBridge {
@@ -86,7 +96,7 @@ class MainActivity : AppCompatActivity() {
             // Never add media unless the user explicitly triggered this session
             if (!activeDownloadSession) return
             runOnUiThread {
-                capturedMedia[url] = MediaItem(type, url, buildFilename(url, type))
+                capturedMedia[url] = MediaItem(type, url, buildFilename(url, type), currentPlatform)
                 updateDownloadButton()
             }
         }
@@ -116,11 +126,11 @@ class MainActivity : AppCompatActivity() {
 
         loadBtn.setOnClickListener {
             val url = urlInput.text.toString().trim()
-            if (url.isNotEmpty()) loadInstagram(url)
+            if (url.isNotEmpty()) loadUrl(url)
             else Toast.makeText(this, "Enter a URL first", Toast.LENGTH_SHORT).show()
         }
 
-        // Auto-load 600 ms after pasting a valid Instagram URL
+        // Auto-load 600 ms after pasting a valid URL
         urlInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -129,8 +139,8 @@ class MainActivity : AppCompatActivity() {
                 if (!readyForAutoLoad) return
                 val text = s?.toString()?.trim() ?: return
                 autoLoadRunnable?.let { urlInput.removeCallbacks(it) }
-                if (text.contains("instagram.com")) {
-                    val r = Runnable { loadInstagram(text) }
+                if (text.contains("instagram.com") || isRedNoteUrl(text)) {
+                    val r = Runnable { loadUrl(text) }
                     autoLoadRunnable = r
                     urlInput.postDelayed(r, 600)
                 }
@@ -169,9 +179,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleIntent(intent: Intent) {
         val url = intent.getStringExtra(Intent.EXTRA_TEXT) ?: intent.data?.toString() ?: return
-        if (url.contains("instagram.com")) {
+        if (url.contains("instagram.com") || isRedNoteUrl(url)) {
             urlInput.setText(url)
-            loadInstagram(url)
+            loadUrl(url)
         }
     }
 
@@ -207,15 +217,16 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView, url: String) {
                 progressBar.visibility = View.GONE
                 CookieManager.getInstance().flush()
-                // Always try to harvest the App ID Instagram embeds in its page JSON
-                injectAppIdFinder()
+
+                // Instagram: always harvest App ID from page JSON
+                if (currentPlatform == "instagram") injectAppIdFinder()
 
                 when {
                     isLoginPage(url) -> {
                         // Record that we actually went through the login page, so that
                         // the next Instagram home-page load is treated as post-login.
                         justLoggedIn = true
-                        statusText.text = "Log in to Instagram — your session is saved automatically"
+                        statusText.text = "Log in — your session is saved automatically"
                     }
                     isAfterLogin(url) -> {
                         justLoggedIn = false   // consume the flag — only fire once
@@ -228,21 +239,33 @@ class MainActivity : AppCompatActivity() {
                     else -> {
                         // Guard: only act if the user explicitly loaded a URL
                         if (pendingUrl == null) return
-                        // Guard: only act once per URL load — Instagram's SPA fires
-                        // onPageFinished multiple times as it re-renders
-                        if (downloadTriggered) return
+                        // Guard: skip if we already processed this exact URL.
+                        // Using URL equality (not a boolean flag) lets redirect chains work:
+                        // xhslink.com fires onPageFinished (processed, finds nothing), then
+                        // xiaohongshu.com fires (different URL → processed again, finds media).
+                        // The boolean downloadTriggered still prevents double-processing of the
+                        // same URL from SPA re-renders.
+                        if (downloadTriggered && url == lastExtractedUrl) return
                         downloadTriggered = true
+                        lastExtractedUrl = url
 
-                        val shortcode = shortcodeFrom(url)
-                        if (shortcode != null) {
-                            statusText.text = "Fetching media for post $shortcode…"
-                            fetchPostMediaFromApi(shortcode)
+                        if (currentPlatform == "rednote") {
+                            statusText.text = "Extracting RedNote media…"
+                            // Retry a few times — __INITIAL_STATE__ may not be ready immediately
+                            injectRedNoteMediaFinder()
+                            webView.postDelayed({ injectRedNoteMediaFinder() }, 1500)
+                            webView.postDelayed({ injectRedNoteMediaFinder() }, 3500)
                         } else {
-                            // Stories, profile etc — scan DOM but let user press button
-                            // (don't auto-download: we don't know which images are relevant)
-                            statusText.text = "Page loaded — press Download All when ready"
-                            injectMediaFinder()
-                            webView.postDelayed({ injectMediaFinder() }, 1200)
+                            val shortcode = shortcodeFrom(url)
+                            if (shortcode != null) {
+                                statusText.text = "Fetching media for post $shortcode…"
+                                fetchPostMediaFromApi(shortcode)
+                            } else {
+                                // Stories, profile etc — scan DOM but let user press button
+                                statusText.text = "Page loaded — press Download All when ready"
+                                injectMediaFinder()
+                                webView.postDelayed({ injectMediaFinder() }, 1200)
+                            }
                         }
                     }
                 }
@@ -255,9 +278,6 @@ class MainActivity : AppCompatActivity() {
             ) {
                 if (request.isForMainFrame) {
                     statusText.text = "HTTP ${errorResponse.statusCode} — tap Load to retry"
-                    // Do NOT auto-retry: retrying via view.loadUrl() bypasses loadInstagram(),
-                    // which means activeDownloadSession stays false and the session state is
-                    // inconsistent. Let the user tap the Load button to retry explicitly.
                 }
             }
 
@@ -271,17 +291,15 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // Only used for non-post pages (stories etc.) — not active for /p/ URLs
+            // Only used for Instagram non-post pages (stories etc.)
             override fun shouldInterceptRequest(
                 view: WebView,
                 request: WebResourceRequest
             ): WebResourceResponse? {
-                // Never capture anything unless the user explicitly started a session.
-                // This prevents profile pictures and feed images from being captured when
-                // the WebView restores its state on app open.
                 if (!activeDownloadSession) return null
-                // Only capture CDN media when we are NOT on a post/reel page
-                // (for post pages the API gives us exact URLs)
+                // CDN interception is only used for Instagram non-post pages;
+                // RedNote media is extracted via __INITIAL_STATE__ JS injection instead.
+                if (currentPlatform != "instagram") return null
                 val currentUrl = pendingUrl ?: ""
                 if (shortcodeFrom(currentUrl) == null) {
                     captureFromUrl(request.url.toString())
@@ -297,7 +315,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ── API fetch ──────────────────────────────────────────────────────────────
+    // ── Instagram API fetch ────────────────────────────────────────────────────
 
     /**
      * Call Instagram's GraphQL API to get ONLY the media belonging to [shortcode].
@@ -316,7 +334,6 @@ class MainActivity : AppCompatActivity() {
                     statusText.text = "Found ${media.size} item(s) — press Download All to save"
                 } else {
                     // API blocked — extract from the page's own embedded JSON instead.
-                    // Do NOT auto-download here: page scan may pick up unrelated images.
                     statusText.text = "Scanning page data… tap Download when count appears"
                     injectPostMediaFinder()
                     webView.postDelayed({ injectPostMediaFinder() }, 2000)
@@ -363,14 +380,12 @@ class MainActivity : AppCompatActivity() {
             conn.requestMethod = "GET"
             conn.connectTimeout = 12_000
             conn.readTimeout    = 12_000
-            // Use Instagram mobile app UA — same trick as the IG Helper userscript
             conn.setRequestProperty("User-Agent",      IG_API_UA)
             conn.setRequestProperty("Cookie",          cookie)
             conn.setRequestProperty("Referer",         referer)
             conn.setRequestProperty("X-Requested-With","")
             conn.setRequestProperty("Accept",          "application/json, */*")
             conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9")
-            // App ID extracted from Instagram's own page — required for query_id endpoint
             conn.setRequestProperty("X-IG-App-ID",     appId)
             if (conn.responseCode == 200) conn.inputStream.bufferedReader().readText()
             else null
@@ -487,7 +502,7 @@ class MainActivity : AppCompatActivity() {
 
     // ── App ID extractor ──────────────────────────────────────────────────────
 
-    /** Read Instagram's own APP_ID from embedded page JSON (same as IG Helper's getAppID()) */
+    /** Read Instagram's own APP_ID from embedded page JSON */
     private fun injectAppIdFinder() {
         val js = """
             (function() {
@@ -503,7 +518,81 @@ class MainActivity : AppCompatActivity() {
         webView.evaluateJavascript(js, null)
     }
 
-    // ── Page scan (fallback / non-post pages) ──────────────────────────────────
+    // ── RedNote media extractor ───────────────────────────────────────────────
+
+    /**
+     * Read note data from RedNote's Vue __INITIAL_STATE__ (same approach as the
+     * XHS-Downloader userscript), transform thumbnail CDN URLs into full-quality
+     * ci.xiaohongshu.com URLs, and report them via AndroidBridge.foundMedia().
+     */
+    private fun injectRedNoteMediaFinder() {
+        val js = """
+            (function() {
+                var state = window.__INITIAL_STATE__;
+                if (!state) return;
+
+                // Try to find the note object — it lives in different locations
+                // depending on whether this is a direct note URL or an explore URL.
+                var note = null;
+                try {
+                    if (state.noteData && state.noteData.data && state.noteData.data.noteData) {
+                        note = state.noteData.data.noteData;
+                    }
+                } catch(e) {}
+
+                if (!note) {
+                    try {
+                        var m = location.pathname.match(/\/explore\/([^?\/]+)/);
+                        if (!m) m = location.pathname.match(/\/discovery\/item\/([^?\/]+)/);
+                        if (m && state.note && state.note.noteDetailMap) {
+                            var entry = state.note.noteDetailMap[m[1]];
+                            if (entry) note = entry.note || entry;
+                        }
+                    } catch(e) {}
+                }
+
+                if (!note) return;
+
+                if (note.type === 'video') {
+                    // Prefer originVideoKey (direct CDN path), fall back to h265 stream
+                    try {
+                        var key = note.video && note.video.consumer && note.video.consumer.originVideoKey;
+                        if (key) {
+                            AndroidBridge.foundMedia('video', 'https://sns-video-bd.xhscdn.com/' + key);
+                            return;
+                        }
+                    } catch(e) {}
+                    try {
+                        var streams = note.video.media.stream.h265;
+                        AndroidBridge.foundMedia('video', streams[streams.length - 1].masterUrl);
+                    } catch(e) {}
+                } else {
+                    // Image post: each thumbnail URL encodes the full-quality image ID
+                    // between the CDN path prefix and the trailing '!'.
+                    // URL format: https://{cdn}.xhscdn.com/{ts}/{hash}/{imageId}!{quality}
+                    // We extract {imageId} and reconstruct a ci.xiaohongshu.com download URL.
+                    //
+                    // Use [^!]+ instead of \S+ to stop at the first '!' — \S is greedy and
+                    // includes '!' itself, which causes incorrect backtracking on complex IDs.
+                    // The pattern covers all xhscdn.com and rednotecdn.com CDN subdomains.
+                    var images = note.imageList;
+                    if (!images || !images.length) return;
+                    var cdnRegex = /https?:\/\/[a-z0-9.-]+(?:xhscdn|rednotecdn)\.com\/\d+\/[0-9a-z]+\/([^!]+)!/;
+                    images.forEach(function(item) {
+                        var url = item.urlDefault || item.url || '';
+                        var match = url.match(cdnRegex);
+                        if (match && match[1]) {
+                            AndroidBridge.foundMedia('image',
+                                'https://ci.xiaohongshu.com/' + match[1] + '?imageView2/format/jpeg');
+                        }
+                    });
+                }
+            })();
+        """.trimIndent()
+        webView.evaluateJavascript(js, null)
+    }
+
+    // ── Instagram page scan (fallback / non-post pages) ───────────────────────
 
     private fun captureFromUrl(url: String) {
         if (url.isBlank()) return
@@ -514,10 +603,9 @@ class MainActivity : AppCompatActivity() {
             (url.contains(".jpg") || url.contains(".webp")) &&
             (url.contains("_e35") || url.contains("_e15") ||
              url.contains("1080x"))
-        // Note: _n.jpg was removed — that suffix also matches profile picture URLs
         val type = when { isVideo -> "video"; isImage -> "image"; else -> return }
         runOnUiThread {
-            capturedMedia[url] = MediaItem(type, url, buildFilename(url, type))
+            capturedMedia[url] = MediaItem(type, url, buildFilename(url, type), "instagram")
             updateDownloadButton()
         }
     }
@@ -594,23 +682,24 @@ class MainActivity : AppCompatActivity() {
         url.contains("challenge") || url.contains("accounts/suspended")
 
     private fun isAfterLogin(url: String): Boolean {
-        // Only treat the Instagram home page as post-login if we actually saw the login
-        // page first (justLoggedIn == true). Without this guard, navigating to the home
-        // page for any other reason (WebView state restore, tapping the Instagram logo, etc.)
-        // would wrongly re-trigger the entire download chain.
         if (!justLoggedIn) return false
         val trimmed = url.trimEnd('/')
         return (trimmed == "https://www.instagram.com" || trimmed == "https://instagram.com") &&
                pendingUrl != null && pendingUrl != trimmed
     }
 
-    private fun loadInstagram(url: String) {
+    private fun loadUrl(url: String) {
         var finalUrl = url
-        if (!url.startsWith("http://") && !url.startsWith("https://"))
-            finalUrl = "https://$url"
+        if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://"))
+            finalUrl = "https://$finalUrl"
+        // RedNote shares URLs as http:// — upgrade to HTTPS to avoid ERR_CLEARTEXT_NOT_PERMITTED
+        if (finalUrl.startsWith("http://"))
+            finalUrl = finalUrl.replaceFirst("http://", "https://")
+        currentPlatform = if (isRedNoteUrl(finalUrl)) "rednote" else "instagram"
         pendingUrl = finalUrl
         downloadTriggered = false
-        activeDownloadSession = true   // user explicitly requested this load
+        lastExtractedUrl = null
+        activeDownloadSession = true
         capturedMedia.clear()
         updateDownloadButton()
         webView.loadUrl(finalUrl, EXTRA_HEADERS)
@@ -627,7 +716,6 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // On API < 29 we write directly to the public Downloads folder and need the permission.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED
@@ -637,11 +725,12 @@ class MainActivity : AppCompatActivity() {
                 arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
                 REQ_WRITE_STORAGE
             )
-            return  // will be retried from onRequestPermissionsResult
+            return
         }
 
         val items = capturedMedia.values.toList()
         val total = items.size
+        val folderName = if (items.firstOrNull()?.source == "rednote") "RedNote" else "Instagram"
 
         // Clear session immediately so reopen never re-triggers
         activeDownloadSession = false
@@ -662,7 +751,6 @@ class MainActivity : AppCompatActivity() {
                 try {
                     downloadFileInApp(item) { pct ->
                         runOnUiThread {
-                            // Overall progress = completed items + fractional current item
                             progressBar.progress = (index * 100 + pct) / total
                             statusText.text = "下载中 $num/$total ($pct%)"
                         }
@@ -678,7 +766,7 @@ class MainActivity : AppCompatActivity() {
                 progressBar.visibility = View.GONE
                 downloadBtn.isEnabled = true
                 statusText.text = if (succeeded == total)
-                    "下载完成，共 $total 个文件，保存至 下载/Instagram/"
+                    "下载完成，共 $total 个文件，保存至 下载/$folderName/"
                 else
                     "完成：$succeeded/$total 成功"
             }
@@ -686,14 +774,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun downloadFileInApp(item: MediaItem, onProgress: (Int) -> Unit) {
+        val isRedNote = item.source == "rednote"
+        val folderName = if (isRedNote) "RedNote" else "Instagram"
+
         val conn = (URL(item.url).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 15_000
             readTimeout    = 60_000
             setRequestProperty("User-Agent", UA)
-            setRequestProperty("Referer", "https://www.instagram.com/")
-            val cookie = CookieManager.getInstance().getCookie(item.url)
-            if (!cookie.isNullOrBlank()) setRequestProperty("Cookie", cookie)
+            if (isRedNote) {
+                // RedNote CDN (ci.xiaohongshu.com) does not require a Referer;
+                // sending one can cause 403s — omit it entirely.
+                setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9")
+            } else {
+                setRequestProperty("Referer", "https://www.instagram.com/")
+                val cookie = CookieManager.getInstance().getCookie(item.url)
+                if (!cookie.isNullOrBlank()) setRequestProperty("Cookie", cookie)
+            }
             connect()
         }
         if (conn.responseCode != HttpURLConnection.HTTP_OK)
@@ -707,7 +804,7 @@ class MainActivity : AppCompatActivity() {
             val values = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, item.filename)
                 put(MediaStore.Downloads.MIME_TYPE, mimeType)
-                put(MediaStore.Downloads.RELATIVE_PATH, "Download/Instagram")
+                put(MediaStore.Downloads.RELATIVE_PATH, "Download/$folderName")
                 put(MediaStore.Downloads.IS_PENDING, 1)
             }
             val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
@@ -728,7 +825,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             val dir = File(
                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                "Instagram"
+                folderName
             )
             dir.mkdirs()
             val file = File(dir, item.filename)
@@ -768,18 +865,20 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == REQ_WRITE_STORAGE &&
             grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
         ) {
-            // Permission just granted — but capturedMedia was already cleared.
-            // Just notify the user to press Download again.
             statusText.text = "权限已获取，请再次点击下载"
         }
     }
 
     private fun buildFilename(url: String, type: String): String {
+        val ext = if (type == "video") "mp4" else "jpg"
         return try {
-            Uri.parse(url).lastPathSegment?.substringBefore("?")?.takeIf { it.isNotBlank() }
-                ?: "instagram_${System.currentTimeMillis()}.${if (type == "video") "mp4" else "jpg"}"
+            val seg = Uri.parse(url).lastPathSegment?.substringBefore("?")?.takeIf { it.isNotBlank() }
+                ?: return "media_${System.currentTimeMillis()}.$ext"
+            // Instagram segments already contain an extension (e.g. abc_e35.jpg);
+            // RedNote image IDs do not, so append one.
+            if ('.' in seg) seg else "$seg.$ext"
         } catch (_: Exception) {
-            "instagram_${System.currentTimeMillis()}.${if (type == "video") "mp4" else "jpg"}"
+            "media_${System.currentTimeMillis()}.$ext"
         }
     }
 
@@ -788,7 +887,6 @@ class MainActivity : AppCompatActivity() {
     override fun onBackPressed() {
         val now = System.currentTimeMillis()
         if (now - backPressedTime < 2000) {
-            // Clear all state before exiting so next launch is always clean
             urlInput.setText("")
             pendingUrl = null
             activeDownloadSession = false
