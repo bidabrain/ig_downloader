@@ -7,7 +7,7 @@
     <string name="app_name">Insta Downloader</string>
     <string name="btn_download">Download</string>
     <string name="btn_load">Load</string>
-    <string name="url_hint">Paste Instagram or RedNote URL…</string>
+    <string name="url_hint">Paste Instagram, X, or RedNote URL…</string>
     <style name="Theme.InstaDownloader" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
         <item name="colorPrimary">@color/ig_pink</item>
         <item name="colorPrimaryVariant">@color/ig_dark</item>

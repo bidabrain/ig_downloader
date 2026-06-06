@@ -25,6 +25,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 
 class MainActivity : AppCompatActivity() {
 
@@ -87,6 +88,20 @@ class MainActivity : AppCompatActivity() {
         fun isRedNoteUrl(url: String) =
             url.contains("xiaohongshu.com") || url.contains("rednote.com") ||
             url.contains("xhslink.com")
+
+        /** Return true if the URL belongs to X / Twitter */
+        fun isXUrl(url: String) = url.contains("x.com") || url.contains("twitter.com")
+
+        /** Extract the numeric tweet/status ID from an X or Twitter URL, or null */
+        fun tweetIdFrom(url: String): String? {
+            val regex = Regex("(?:twitter\\.com|x\\.com)/[^/]+/status/(\\d+)")
+            return regex.find(url)?.groupValues?.get(1)
+        }
+
+        // X/Twitter GraphQL constants
+        // Bearer token is the public guest token embedded in all X web clients
+        const val X_BEARER = "Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA"
+        const val X_QUERY_ID = "zAz9764BcLZOJ0JU2wrd1A"
     }
 
     inner class WebBridge {
@@ -139,7 +154,7 @@ class MainActivity : AppCompatActivity() {
                 if (!readyForAutoLoad) return
                 val text = s?.toString()?.trim() ?: return
                 autoLoadRunnable?.let { urlInput.removeCallbacks(it) }
-                if (text.contains("instagram.com") || isRedNoteUrl(text)) {
+                if (text.contains("instagram.com") || isRedNoteUrl(text) || isXUrl(text)) {
                     val r = Runnable { loadUrl(text) }
                     autoLoadRunnable = r
                     urlInput.postDelayed(r, 600)
@@ -179,7 +194,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleIntent(intent: Intent) {
         val url = intent.getStringExtra(Intent.EXTRA_TEXT) ?: intent.data?.toString() ?: return
-        if (url.contains("instagram.com") || isRedNoteUrl(url)) {
+        if (url.contains("instagram.com") || isRedNoteUrl(url) || isXUrl(url)) {
             urlInput.setText(url)
             loadUrl(url)
         }
@@ -251,13 +266,24 @@ class MainActivity : AppCompatActivity() {
                         downloadTriggered = true
                         lastExtractedUrl = url
 
-                        if (currentPlatform == "rednote") {
+                        when (currentPlatform) {
+                        "rednote" -> {
                             statusText.text = "Extracting RedNote media…"
                             // Retry a few times — __INITIAL_STATE__ may not be ready immediately
                             injectRedNoteMediaFinder()
                             webView.postDelayed({ injectRedNoteMediaFinder() }, 1500)
                             webView.postDelayed({ injectRedNoteMediaFinder() }, 3500)
-                        } else {
+                        }
+                        "twitter" -> {
+                            val tweetId = tweetIdFrom(url)
+                            if (tweetId != null) {
+                                statusText.text = "Fetching media for tweet $tweetId…"
+                                fetchTwitterMediaFromApi(tweetId)
+                            } else {
+                                statusText.text = "Page loaded — press Download All when ready"
+                            }
+                        }
+                        else -> {
                             val shortcode = shortcodeFrom(url)
                             if (shortcode != null) {
                                 statusText.text = "Fetching media for post $shortcode…"
@@ -269,6 +295,7 @@ class MainActivity : AppCompatActivity() {
                                 webView.postDelayed({ injectMediaFinder() }, 1200)
                             }
                         }
+                        } // end when(currentPlatform)
                     }
                 }
             }
@@ -502,6 +529,117 @@ class MainActivity : AppCompatActivity() {
         return results
     }
 
+    // ── X / Twitter API fetch ─────────────────────────────────────────────────
+
+    private fun fetchTwitterMediaFromApi(tweetId: String) {
+        Thread {
+            val cookie = CookieManager.getInstance().getCookie("https://x.com") ?: ""
+            val ct0    = extractCt0(cookie)
+            val media  = tryFetchTwitterMedia(tweetId, cookie, ct0)
+
+            runOnUiThread {
+                if (media.isNotEmpty()) {
+                    capturedMedia.clear()
+                    media.forEach { capturedMedia[it.url] = it }
+                    updateDownloadButton()
+                    statusText.text = "Found ${media.size} item(s) — press Download All to save"
+                } else {
+                    statusText.text = "No media found — make sure you are logged in to X"
+                }
+            }
+        }.start()
+    }
+
+    private fun extractCt0(cookie: String): String =
+        cookie.split(";").map { it.trim() }
+            .firstOrNull { it.startsWith("ct0=") }
+            ?.substringAfter("ct0=") ?: ""
+
+    private fun tryFetchTwitterMedia(tweetId: String, cookie: String, ct0: String): List<MediaItem> {
+        val variables    = """{"tweetId":"$tweetId","withCommunity":false,"includePromotedContent":false,"withVoice":false}"""
+        val features     = """{"creator_subscriptions_tweet_preview_api_enabled":true,"premium_content_api_read_enabled":false,"communities_web_enable_tweet_community_results_fetch":true,"c9s_tweet_anatomy_moderator_badge_enabled":true,"responsive_web_grok_analyze_button_fetch_trends_enabled":false,"responsive_web_grok_analyze_post_followups_enabled":false,"responsive_web_jetfuel_frame":false,"responsive_web_grok_share_attachment_enabled":true,"articles_preview_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":true,"tweet_awards_web_tipping_enabled":false,"responsive_web_grok_show_grok_translated_post":false,"responsive_web_grok_analysis_button_from_backend":false,"creator_subscriptions_quote_tweet_preview_enabled":false,"freedom_of_speech_not_reach_fetch_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"profile_label_improvements_pcf_label_in_post_enabled":true,"rweb_tipjar_consumption_enabled":true,"verified_phone_label_enabled":false,"responsive_web_grok_image_annotation_enabled":true,"responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,"responsive_web_graphql_timeline_navigation_enabled":true,"responsive_web_enhance_cards_enabled":false}"""
+        val fieldToggles = """{"withArticleRichContentState":true,"withArticlePlainText":false,"withGrokAnalyze":false,"withDisallowedReplyControls":false}"""
+
+        val enc = "UTF-8"
+        val url = "https://x.com/i/api/graphql/$X_QUERY_ID/TweetResultByRestId" +
+            "?variables=${URLEncoder.encode(variables, enc)}" +
+            "&features=${URLEncoder.encode(features, enc)}" +
+            "&fieldToggles=${URLEncoder.encode(fieldToggles, enc)}"
+
+        val json = httpGetTwitter(url, cookie, ct0) ?: return emptyList()
+        return parseTwitterResponse(json, tweetId)
+    }
+
+    private fun httpGetTwitter(url: String, cookie: String, ct0: String): String? {
+        return try {
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.connectTimeout = 12_000
+            conn.readTimeout    = 12_000
+            conn.setRequestProperty("User-Agent",               UA)
+            conn.setRequestProperty("authorization",            X_BEARER)
+            conn.setRequestProperty("x-csrf-token",             ct0)
+            conn.setRequestProperty("x-twitter-auth-type",      "OAuth2Session")
+            conn.setRequestProperty("x-twitter-active-user",    "yes")
+            conn.setRequestProperty("x-twitter-client-language","en")
+            conn.setRequestProperty("content-type",             "application/json")
+            conn.setRequestProperty("Cookie",                   cookie)
+            conn.setRequestProperty("Referer",                  "https://x.com/")
+            if (conn.responseCode == 200) conn.inputStream.bufferedReader().readText()
+            else null
+        } catch (e: Exception) { null }
+    }
+
+    private fun parseTwitterResponse(json: String, tweetId: String): List<MediaItem> {
+        return try {
+            val root   = JSONObject(json)
+            val result = root.getJSONObject("data").getJSONObject("tweetResult").getJSONObject("result")
+            // Response wraps the tweet in a "tweet" key for some visibility result types
+            val tweet  = if (result.has("tweet")) result.getJSONObject("tweet") else result
+
+            val username = try {
+                tweet.getJSONObject("core")
+                    .getJSONObject("user_results").getJSONObject("result")
+                    .getJSONObject("legacy").getString("screen_name")
+            } catch (_: Exception) { "twitter" }
+
+            val legacy      = tweet.optJSONObject("legacy") ?: return emptyList()
+            val extEntities = legacy.optJSONObject("extended_entities") ?: return emptyList()
+            val mediaArray  = extEntities.optJSONArray("media") ?: return emptyList()
+
+            val results = mutableListOf<MediaItem>()
+            for (i in 0 until mediaArray.length()) {
+                val media = mediaArray.getJSONObject(i)
+                val idx   = i + 1
+                when (media.optString("type")) {
+                    "photo" -> {
+                        val base = media.optString("media_url_https")
+                        if (base.isNotEmpty())
+                            results += MediaItem("image", "$base?format=jpg&name=4096x4096",
+                                "${username}_${tweetId}_img$idx.jpg", "twitter")
+                    }
+                    "video", "animated_gif" -> {
+                        val variants = media.optJSONObject("video_info")
+                            ?.optJSONArray("variants") ?: continue
+                        var bestUrl     = ""
+                        var bestBitrate = -1
+                        for (j in 0 until variants.length()) {
+                            val v = variants.getJSONObject(j)
+                            if (v.optString("content_type") == "video/mp4") {
+                                val br = v.optInt("bitrate", 0)
+                                if (br > bestBitrate) { bestBitrate = br; bestUrl = v.optString("url") }
+                            }
+                        }
+                        if (bestUrl.isNotEmpty())
+                            results += MediaItem("video", bestUrl,
+                                "${username}_${tweetId}_vid$idx.mp4", "twitter")
+                    }
+                }
+            }
+            results
+        } catch (e: Exception) { emptyList() }
+    }
+
     // ── App ID extractor ──────────────────────────────────────────────────────
 
     /** Read Instagram's own APP_ID from embedded page JSON */
@@ -686,8 +824,9 @@ class MainActivity : AppCompatActivity() {
     private fun isAfterLogin(url: String): Boolean {
         if (!justLoggedIn) return false
         val trimmed = url.trimEnd('/')
-        return (trimmed == "https://www.instagram.com" || trimmed == "https://instagram.com") &&
-               pendingUrl != null && pendingUrl != trimmed
+        val isIgHome  = trimmed == "https://www.instagram.com" || trimmed == "https://instagram.com"
+        val isXHome   = trimmed == "https://x.com/home" || trimmed == "https://twitter.com/home"
+        return (isIgHome || isXHome) && pendingUrl != null && pendingUrl != trimmed
     }
 
     private fun loadUrl(url: String) {
@@ -697,7 +836,11 @@ class MainActivity : AppCompatActivity() {
         // RedNote shares URLs as http:// — upgrade to HTTPS to avoid ERR_CLEARTEXT_NOT_PERMITTED
         if (finalUrl.startsWith("http://"))
             finalUrl = finalUrl.replaceFirst("http://", "https://")
-        currentPlatform = if (isRedNoteUrl(finalUrl)) "rednote" else "instagram"
+        currentPlatform = when {
+            isRedNoteUrl(finalUrl) -> "rednote"
+            isXUrl(finalUrl)       -> "twitter"
+            else                   -> "instagram"
+        }
         pendingUrl = finalUrl
         downloadTriggered = false
         lastExtractedUrl = null
@@ -733,7 +876,11 @@ class MainActivity : AppCompatActivity() {
 
         val items = capturedMedia.values.toList()
         val total = items.size
-        val folderName = if (items.firstOrNull()?.source == "rednote") "RedNote" else "Instagram"
+        val folderName = when (items.firstOrNull()?.source) {
+            "rednote"  -> "RedNote"
+            "twitter"  -> "Twitter"
+            else       -> "Instagram"
+        }
 
         // Clear session immediately so reopen never re-triggers
         activeDownloadSession = false
@@ -777,22 +924,32 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun downloadFileInApp(item: MediaItem, onProgress: (Int) -> Unit) {
-        val isRedNote = item.source == "rednote"
-        val folderName = if (isRedNote) "RedNote" else "Instagram"
+        val folderName = when (item.source) {
+            "rednote"  -> "RedNote"
+            "twitter"  -> "Twitter"
+            else       -> "Instagram"
+        }
 
         val conn = (URL(item.url).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 15_000
             readTimeout    = 60_000
             setRequestProperty("User-Agent", UA)
-            if (isRedNote) {
-                // RedNote CDN (ci.xiaohongshu.com) does not require a Referer;
-                // sending one can cause 403s — omit it entirely.
-                setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9")
-            } else {
-                setRequestProperty("Referer", "https://www.instagram.com/")
-                val cookie = CookieManager.getInstance().getCookie(item.url)
-                if (!cookie.isNullOrBlank()) setRequestProperty("Cookie", cookie)
+            when (item.source) {
+                "rednote" -> {
+                    // RedNote CDN does not require a Referer; omit to avoid 403s
+                    setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9")
+                }
+                "twitter" -> {
+                    setRequestProperty("Referer", "https://x.com/")
+                    val cookie = CookieManager.getInstance().getCookie("https://x.com")
+                    if (!cookie.isNullOrBlank()) setRequestProperty("Cookie", cookie)
+                }
+                else -> {
+                    setRequestProperty("Referer", "https://www.instagram.com/")
+                    val cookie = CookieManager.getInstance().getCookie(item.url)
+                    if (!cookie.isNullOrBlank()) setRequestProperty("Cookie", cookie)
+                }
             }
             connect()
         }

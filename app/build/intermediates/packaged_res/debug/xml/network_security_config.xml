@@ -9,5 +9,8 @@
         <domain includeSubdomains="true">xhslink.com</domain>
         <domain includeSubdomains="true">rednote.com</domain>
         <domain includeSubdomains="true">rednotecdn.com</domain>
+        <domain includeSubdomains="true">x.com</domain>
+        <domain includeSubdomains="true">twitter.com</domain>
+        <domain includeSubdomains="true">twimg.com</domain>
     </domain-config>
 </network-security-config>

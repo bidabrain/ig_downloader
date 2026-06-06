@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:2:1-53:12
-INJECTED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:2:1-53:12
-INJECTED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:2:1-53:12
-INJECTED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:2:1-53:12
+ADDED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:2:1-63:12
+INJECTED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:2:1-63:12
+INJECTED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:2:1-63:12
+INJECTED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:2:1-63:12
 MERGED from [com.google.android.material:material:1.11.0] /Users/isayama/.gradle/caches/transforms-3/9740f4e805b4a657fb9f820119e96761/transformed/material-1.11.0/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] /Users/isayama/.gradle/caches/transforms-3/2fd63d13bab47775624797e5c77c3827/transformed/constraintlayout-2.1.4/AndroidManifest.xml:2:1-11:12
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] /Users/isayama/.gradle/caches/transforms-3/077eac664fe55ea786b5df1bce2e6f5b/transformed/appcompat-resources-1.6.1/AndroidManifest.xml:17:1-22:12
@@ -64,8 +64,8 @@ ADDED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xm
 	android:name
 		ADDED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:5:22-78
 application
-ADDED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:8:5-51:19
-INJECTED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:8:5-51:19
+ADDED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:8:5-61:19
+INJECTED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:8:5-61:19
 MERGED from [com.google.android.material:material:1.11.0] /Users/isayama/.gradle/caches/transforms-3/9740f4e805b4a657fb9f820119e96761/transformed/material-1.11.0/AndroidManifest.xml:22:5-20
 MERGED from [com.google.android.material:material:1.11.0] /Users/isayama/.gradle/caches/transforms-3/9740f4e805b4a657fb9f820119e96761/transformed/material-1.11.0/AndroidManifest.xml:22:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] /Users/isayama/.gradle/caches/transforms-3/2fd63d13bab47775624797e5c77c3827/transformed/constraintlayout-2.1.4/AndroidManifest.xml:9:5-20
@@ -101,7 +101,7 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] /Users/isayama/.gradle/cach
 	android:networkSecurityConfig
 		ADDED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:15:9-69
 activity#com.instadownloader.MainActivity
-ADDED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:17:9-49:20
+ADDED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:17:9-59:20
 	android:windowSoftInputMode
 		ADDED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:20:13-55
 	android:exported
@@ -146,8 +146,10 @@ category#android.intent.category.BROWSABLE
 ADDED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:35:17-78
 	android:name
 		ADDED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:35:27-75
-intent-filter#action:name:android.intent.action.VIEW+category:name:android.intent.category.BROWSABLE+category:name:android.intent.category.DEFAULT+data:host:rednote.com+data:host:www.rednote.com+data:host:www.xiaohongshu.com+data:host:xiaohongshu.com+data:scheme:https+data:scheme:https+data:scheme:https+data:scheme:https
+intent-filter#action:name:android.intent.action.VIEW+category:name:android.intent.category.BROWSABLE+category:name:android.intent.category.DEFAULT+data:host:twitter.com+data:host:www.twitter.com+data:host:www.x.com+data:host:x.com+data:scheme:https+data:scheme:https+data:scheme:https+data:scheme:https
 ADDED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:40:13-48:29
+intent-filter#action:name:android.intent.action.VIEW+category:name:android.intent.category.BROWSABLE+category:name:android.intent.category.DEFAULT+data:host:rednote.com+data:host:www.rednote.com+data:host:www.xiaohongshu.com+data:host:xiaohongshu.com+data:scheme:https+data:scheme:https+data:scheme:https+data:scheme:https
+ADDED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml:50:13-58:29
 uses-sdk
 INJECTED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /Users/isayama/MyRepo/InstaDownloader/app/src/main/AndroidManifest.xml
