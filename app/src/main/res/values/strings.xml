@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Insta Downloader</string>
+    <string name="url_hint">Paste Instagram URL…</string>
+    <string name="btn_load">Load</string>
+    <string name="btn_download">Download</string>
+</resources>
