@@ -109,6 +109,9 @@ class MainActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progressBar)
         statusText  = findViewById(R.id.statusText)
 
+        // Always start with a clean input — never restore old URL from any saved state
+        urlInput.setText("")
+
         setupWebView()
 
         loadBtn.setOnClickListener {
@@ -785,6 +788,11 @@ class MainActivity : AppCompatActivity() {
     override fun onBackPressed() {
         val now = System.currentTimeMillis()
         if (now - backPressedTime < 2000) {
+            // Clear all state before exiting so next launch is always clean
+            urlInput.setText("")
+            pendingUrl = null
+            activeDownloadSession = false
+            capturedMedia.clear()
             super.onBackPressed()
         } else {
             backPressedTime = now
