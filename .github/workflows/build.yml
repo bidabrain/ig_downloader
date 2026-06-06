@@ -1,14 +1,14 @@
-name: Build APK
+name: Build & Release APK
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
     branches: [ main, master ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -26,8 +26,16 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Get version name
+        id: version
+        run: |
+          VERSION=$(grep versionName app/build.gradle | awk -F'"' '{print $2}')
+          echo "name=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          tag_name: ${{ steps.version.outputs.name }}
+          name: Release ${{ steps.version.outputs.name }}
+          files: app/build/outputs/apk/debug/app-debug.apk
+          generate_release_notes: true

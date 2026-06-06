@@ -23,7 +23,9 @@
             android:singleLine="true"
             android:background="@android:color/white"
             android:padding="10dp"
-            android:textSize="14sp" />
+            android:textSize="14sp"
+            android:textColor="@color/black"
+            android:textColorHint="#888888" />
 
         <Button
             android:id="@+id/loadBtn"
@@ -39,10 +41,12 @@
         android:id="@+id/progressBar"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
-        android:layout_height="4dp"
+        android:layout_height="18dp"
         android:max="100"
         android:visibility="gone"
-        android:progressTint="@color/ig_pink" />
+        android:progressTint="@color/ig_pink"
+        android:progressBackgroundTint="#DDDDDD"
+        android:minHeight="18dp" />
 
     <!-- Status text -->
     <TextView

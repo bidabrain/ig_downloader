@@ -1,19 +1,28 @@
 package com.instadownloader
 
+import android.Manifest
 import android.annotation.SuppressLint
-import android.app.DownloadManager
-import android.content.Context
+import android.content.ContentValues
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.webkit.*
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import org.json.JSONObject
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -60,6 +69,8 @@ class MainActivity : AppCompatActivity() {
             "Accept-Language"  to "en-US,en;q=0.9",
             "Accept"           to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         )
+
+        const val REQ_WRITE_STORAGE = 1001
 
         /** Extract the post/reel shortcode from a URL, or null if not a post URL */
         fun shortcodeFrom(url: String): String? {
@@ -612,35 +623,151 @@ class MainActivity : AppCompatActivity() {
             statusText.text = "No media found — make sure you are logged in"
             return
         }
-        val count = capturedMedia.size
-        capturedMedia.values.forEach { enqueueDownload(it) }
-        statusText.text = "Downloading $count item(s) — check notification bar"
-        Toast.makeText(this, "Downloading $count item(s)", Toast.LENGTH_SHORT).show()
 
-        // Clear session so that closing and reopening the app never re-triggers downloads.
-        // The DownloadManager runs as a system service and will finish independently.
+        // On API < 29 we write directly to the public Downloads folder and need the permission.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                REQ_WRITE_STORAGE
+            )
+            return  // will be retried from onRequestPermissionsResult
+        }
+
+        val items = capturedMedia.values.toList()
+        val total = items.size
+
+        // Clear session immediately so reopen never re-triggers
         activeDownloadSession = false
         downloadTriggered = true
         pendingUrl = null
         capturedMedia.clear()
         updateDownloadButton()
+
+        downloadBtn.isEnabled = false
+        progressBar.max = 100
+        progressBar.progress = 0
+        progressBar.visibility = View.VISIBLE
+
+        Thread {
+            var succeeded = 0
+            for ((index, item) in items.withIndex()) {
+                val num = index + 1
+                try {
+                    downloadFileInApp(item) { pct ->
+                        runOnUiThread {
+                            // Overall progress = completed items + fractional current item
+                            progressBar.progress = (index * 100 + pct) / total
+                            statusText.text = "下载中 $num/$total ($pct%)"
+                        }
+                    }
+                    succeeded++
+                } catch (e: Exception) {
+                    runOnUiThread {
+                        statusText.text = "第 $num 个失败：${e.message}"
+                    }
+                }
+            }
+            runOnUiThread {
+                progressBar.visibility = View.GONE
+                downloadBtn.isEnabled = true
+                statusText.text = if (succeeded == total)
+                    "下载完成，共 $total 个文件，保存至 下载/Instagram/"
+                else
+                    "完成：$succeeded/$total 成功"
+            }
+        }.start()
     }
 
-    private fun enqueueDownload(item: MediaItem) {
-        try {
+    private fun downloadFileInApp(item: MediaItem, onProgress: (Int) -> Unit) {
+        val conn = (URL(item.url).openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 15_000
+            readTimeout    = 60_000
+            setRequestProperty("User-Agent", UA)
+            setRequestProperty("Referer", "https://www.instagram.com/")
             val cookie = CookieManager.getInstance().getCookie(item.url)
-            val req = DownloadManager.Request(Uri.parse(item.url)).apply {
-                setTitle(item.filename)
-                setDescription("Insta Downloader")
-                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "Instagram/${item.filename}")
-                addRequestHeader("User-Agent", UA)
-                addRequestHeader("Referer", "https://www.instagram.com/")
-                if (!cookie.isNullOrBlank()) addRequestHeader("Cookie", cookie)
+            if (!cookie.isNullOrBlank()) setRequestProperty("Cookie", cookie)
+            connect()
+        }
+        if (conn.responseCode != HttpURLConnection.HTTP_OK)
+            throw Exception("HTTP ${conn.responseCode}")
+
+        val totalBytes = conn.contentLengthLong
+        val input = conn.inputStream
+        val mimeType = if (item.type == "video") "video/mp4" else "image/jpeg"
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, item.filename)
+                put(MediaStore.Downloads.MIME_TYPE, mimeType)
+                put(MediaStore.Downloads.RELATIVE_PATH, "Download/Instagram")
+                put(MediaStore.Downloads.IS_PENDING, 1)
             }
-            (getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).enqueue(req)
-        } catch (e: Exception) {
-            Toast.makeText(this, "Failed: ${e.message}", Toast.LENGTH_LONG).show()
+            val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                ?: throw Exception("Cannot create file in MediaStore")
+            try {
+                contentResolver.openOutputStream(uri)!!.use { out ->
+                    streamWithProgress(input, out, totalBytes, onProgress)
+                }
+                contentResolver.update(
+                    uri,
+                    ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) },
+                    null, null
+                )
+            } catch (e: Exception) {
+                contentResolver.delete(uri, null, null)
+                throw e
+            }
+        } else {
+            val dir = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                "Instagram"
+            )
+            dir.mkdirs()
+            val file = File(dir, item.filename)
+            FileOutputStream(file).use { out ->
+                streamWithProgress(input, out, totalBytes, onProgress)
+            }
+        }
+    }
+
+    private fun streamWithProgress(
+        input: InputStream,
+        output: OutputStream,
+        totalBytes: Long,
+        onProgress: (Int) -> Unit
+    ) {
+        val buf = ByteArray(16 * 1024)
+        var downloaded = 0L
+        var lastPct = -1
+        var len: Int
+        while (input.read(buf).also { len = it } != -1) {
+            output.write(buf, 0, len)
+            downloaded += len
+            if (totalBytes > 0) {
+                val pct = (downloaded * 100 / totalBytes).toInt()
+                if (pct != lastPct) { lastPct = pct; onProgress(pct) }
+            }
+        }
+        if (totalBytes <= 0) onProgress(100)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQ_WRITE_STORAGE &&
+            grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
+        ) {
+            // Permission just granted — but capturedMedia was already cleared.
+            // Just notify the user to press Download again.
+            statusText.text = "权限已获取，请再次点击下载"
         }
     }
 
@@ -653,7 +780,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var backPressedTime = 0L
+
     override fun onBackPressed() {
-        if (webView.canGoBack()) webView.goBack() else super.onBackPressed()
+        val now = System.currentTimeMillis()
+        if (now - backPressedTime < 2000) {
+            super.onBackPressed()
+        } else {
+            backPressedTime = now
+            Toast.makeText(this, "再按一次退出", Toast.LENGTH_SHORT).show()
+        }
     }
 }
