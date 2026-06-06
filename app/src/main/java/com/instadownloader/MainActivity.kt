@@ -223,12 +223,14 @@ class MainActivity : AppCompatActivity() {
 
                 when {
                     isLoginPage(url) -> {
-                        // Record that we actually went through the login page, so that
-                        // the next Instagram home-page load is treated as post-login.
+                        // Show the WebView so the user can actually log in
+                        webView.visibility = View.VISIBLE
                         justLoggedIn = true
                         statusText.text = "Log in — your session is saved automatically"
                     }
                     isAfterLogin(url) -> {
+                        // Login done — hide the WebView again
+                        webView.visibility = View.GONE
                         justLoggedIn = false   // consume the flag — only fire once
                         statusText.text = "Logged in! Loading your link…"
                         pendingUrl?.let { pu ->
@@ -702,6 +704,7 @@ class MainActivity : AppCompatActivity() {
         activeDownloadSession = true
         capturedMedia.clear()
         updateDownloadButton()
+        webView.visibility = View.GONE
         webView.loadUrl(finalUrl, EXTRA_HEADERS)
     }
 

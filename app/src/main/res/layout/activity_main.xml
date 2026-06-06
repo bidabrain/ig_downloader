@@ -58,12 +58,13 @@
         android:textSize="12sp"
         android:text="Paste an Instagram URL above and tap Load" />
 
-    <!-- WebView fills remaining space -->
+    <!-- WebView: hidden by default, shown only when Instagram login is required -->
     <WebView
         android:id="@+id/webView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:visibility="gone" />
 
     <!-- Download button fixed at bottom -->
     <Button
