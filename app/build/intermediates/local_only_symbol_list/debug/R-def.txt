@@ -7,6 +7,7 @@ color white
 id browserBtn
 id downloadBtn
 id loadBtn
+id loginBtn
 id progressBar
 id statusText
 id urlInput

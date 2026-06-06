@@ -34,8 +34,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var loadBtn: Button
     private lateinit var downloadBtn: Button
     private lateinit var browserBtn: Button
+    private lateinit var loginBtn: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var statusText: TextView
+
 
     private val capturedMedia = LinkedHashMap<String, MediaItem>()
     private var pendingUrl: String? = null
@@ -133,6 +135,7 @@ class MainActivity : AppCompatActivity() {
         loadBtn     = findViewById(R.id.loadBtn)
         downloadBtn = findViewById(R.id.downloadBtn)
         browserBtn  = findViewById(R.id.browserBtn)
+        loginBtn    = findViewById(R.id.loginBtn)
         progressBar = findViewById(R.id.progressBar)
         statusText  = findViewById(R.id.statusText)
 
@@ -172,6 +175,21 @@ class MainActivity : AppCompatActivity() {
             browserBtn.text    = if (visible) "Browser" else "Hide Browser"
         }
 
+        // Navigate the in-app WebView to the platform's login page.
+        // We load it with EXTRA_HEADERS (which blanks X-Requested-With) and
+        // shouldOverrideUrlLoading ensures every subsequent click/redirect also
+        // carries those headers — so Instagram/X never see the WebView fingerprint.
+        loginBtn.setOnClickListener {
+            val loginUrl = when (currentPlatform) {
+                "twitter"  -> "https://x.com/i/flow/login"
+                "rednote"  -> "https://www.xiaohongshu.com/"
+                else       -> "https://www.instagram.com/accounts/login/"
+            }
+            webView.visibility = View.VISIBLE
+            browserBtn.text    = "Hide Browser"
+            webView.loadUrl(loginUrl, EXTRA_HEADERS)
+        }
+
         // Only process the launch intent on a truly fresh start.
         // Guards against two stale-intent cases:
         //   1. Activity recreated after kill: savedInstanceState is non-null.
@@ -193,6 +211,7 @@ class MainActivity : AppCompatActivity() {
         // onRestoreInstanceState() fires before onResume(), so the EditText text has
         // already been restored by the time we enable auto-load here.
         readyForAutoLoad = true
+
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -231,6 +250,22 @@ class MainActivity : AppCompatActivity() {
         webView.addJavascriptInterface(WebBridge(), "AndroidBridge")
 
         webView.webViewClient = object : WebViewClient() {
+
+            // Re-load every GET navigation through loadUrl() so our EXTRA_HEADERS are
+            // applied (blanking X-Requested-With). Without this, Android injects
+            // "X-Requested-With: com.instadownloader" on every subsequent request,
+            // which Instagram and X use to detect — and block — WebView logins.
+            override fun shouldOverrideUrlLoading(
+                view: WebView,
+                request: WebResourceRequest
+            ): Boolean {
+                if (request.method?.uppercase() == "GET") {
+                    view.loadUrl(request.url.toString(), EXTRA_HEADERS)
+                    return true
+                }
+                return false   // let POST (form submit) go through unchanged
+            }
+
             override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
                 progressBar.visibility = View.VISIBLE
                 progressBar.progress = 0
@@ -539,7 +574,18 @@ class MainActivity : AppCompatActivity() {
         Thread {
             val cookie = CookieManager.getInstance().getCookie("https://x.com") ?: ""
             val ct0    = extractCt0(cookie)
-            val media  = tryFetchTwitterMedia(tweetId, cookie, ct0)
+
+            // 1. Try with session cookies (works for private accounts if user is logged in)
+            var media = if (ct0.isNotEmpty()) tryFetchTwitterMedia(tweetId, cookie, ct0, null)
+                        else emptyList()
+
+            // 2. Fall back to guest token — works for ALL public tweets, no login needed
+            if (media.isEmpty()) {
+                val guestToken = fetchXGuestToken()
+                if (guestToken != null) {
+                    media = tryFetchTwitterMedia(tweetId, "", "", guestToken)
+                }
+            }
 
             runOnUiThread {
                 if (media.isNotEmpty()) {
@@ -548,10 +594,33 @@ class MainActivity : AppCompatActivity() {
                     updateDownloadButton()
                     statusText.text = "Found ${media.size} item(s) — press Download All to save"
                 } else {
-                    statusText.text = "No media found — make sure you are logged in to X"
+                    statusText.text = "No media found. Private account? Tap Login, log in inside the Browser, then reload."
                 }
             }
         }.start()
+    }
+
+    /**
+     * Obtain a short-lived guest token from X's public endpoint.
+     * Guest tokens let us call the GraphQL API for any public tweet without any login.
+     */
+    private fun fetchXGuestToken(): String? {
+        return try {
+            val conn = URL("https://api.twitter.com/1.1/guest/activate.json")
+                .openConnection() as HttpURLConnection
+            conn.requestMethod   = "POST"
+            conn.connectTimeout  = 10_000
+            conn.readTimeout     = 10_000
+            conn.doOutput        = true
+            conn.setRequestProperty("Authorization",   X_BEARER)
+            conn.setRequestProperty("Content-Length",  "0")
+            conn.setRequestProperty("User-Agent",      UA)
+            conn.outputStream.close()   // send empty body
+            if (conn.responseCode == 200)
+                JSONObject(conn.inputStream.bufferedReader().readText())
+                    .optString("guest_token").takeIf { it.isNotEmpty() }
+            else null
+        } catch (e: Exception) { null }
     }
 
     private fun extractCt0(cookie: String): String =
@@ -559,7 +628,17 @@ class MainActivity : AppCompatActivity() {
             .firstOrNull { it.startsWith("ct0=") }
             ?.substringAfter("ct0=") ?: ""
 
-    private fun tryFetchTwitterMedia(tweetId: String, cookie: String, ct0: String): List<MediaItem> {
+    /**
+     * Call the TweetResultByRestId GraphQL endpoint.
+     * Pass [guestToken] for unauthenticated public access, or [ct0] + [cookie] for
+     * authenticated access (needed for private accounts).
+     */
+    private fun tryFetchTwitterMedia(
+        tweetId: String,
+        cookie: String,
+        ct0: String,
+        guestToken: String?
+    ): List<MediaItem> {
         val variables    = """{"tweetId":"$tweetId","withCommunity":false,"includePromotedContent":false,"withVoice":false}"""
         val features     = """{"creator_subscriptions_tweet_preview_api_enabled":true,"premium_content_api_read_enabled":false,"communities_web_enable_tweet_community_results_fetch":true,"c9s_tweet_anatomy_moderator_badge_enabled":true,"responsive_web_grok_analyze_button_fetch_trends_enabled":false,"responsive_web_grok_analyze_post_followups_enabled":false,"responsive_web_jetfuel_frame":false,"responsive_web_grok_share_attachment_enabled":true,"articles_preview_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":true,"tweet_awards_web_tipping_enabled":false,"responsive_web_grok_show_grok_translated_post":false,"responsive_web_grok_analysis_button_from_backend":false,"creator_subscriptions_quote_tweet_preview_enabled":false,"freedom_of_speech_not_reach_fetch_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"profile_label_improvements_pcf_label_in_post_enabled":true,"rweb_tipjar_consumption_enabled":true,"verified_phone_label_enabled":false,"responsive_web_grok_image_annotation_enabled":true,"responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,"responsive_web_graphql_timeline_navigation_enabled":true,"responsive_web_enhance_cards_enabled":false}"""
         val fieldToggles = """{"withArticleRichContentState":true,"withArticlePlainText":false,"withGrokAnalyze":false,"withDisallowedReplyControls":false}"""
@@ -570,25 +649,36 @@ class MainActivity : AppCompatActivity() {
             "&features=${URLEncoder.encode(features, enc)}" +
             "&fieldToggles=${URLEncoder.encode(fieldToggles, enc)}"
 
-        val json = httpGetTwitter(url, cookie, ct0) ?: return emptyList()
+        val json = httpGetTwitter(url, cookie, ct0, guestToken) ?: return emptyList()
         return parseTwitterResponse(json, tweetId)
     }
 
-    private fun httpGetTwitter(url: String, cookie: String, ct0: String): String? {
+    private fun httpGetTwitter(
+        url: String,
+        cookie: String,
+        ct0: String,
+        guestToken: String?
+    ): String? {
         return try {
             val conn = URL(url).openConnection() as HttpURLConnection
             conn.requestMethod = "GET"
             conn.connectTimeout = 12_000
             conn.readTimeout    = 12_000
-            conn.setRequestProperty("User-Agent",               UA)
-            conn.setRequestProperty("authorization",            X_BEARER)
-            conn.setRequestProperty("x-csrf-token",             ct0)
-            conn.setRequestProperty("x-twitter-auth-type",      "OAuth2Session")
+            conn.setRequestProperty("User-Agent",                UA)
+            conn.setRequestProperty("authorization",             X_BEARER)
             conn.setRequestProperty("x-twitter-active-user",    "yes")
             conn.setRequestProperty("x-twitter-client-language","en")
             conn.setRequestProperty("content-type",             "application/json")
-            conn.setRequestProperty("Cookie",                   cookie)
             conn.setRequestProperty("Referer",                  "https://x.com/")
+            if (guestToken != null) {
+                // Unauthenticated guest mode — no CSRF token needed
+                conn.setRequestProperty("x-guest-token", guestToken)
+            } else {
+                // Authenticated session mode
+                conn.setRequestProperty("x-csrf-token",         ct0)
+                conn.setRequestProperty("x-twitter-auth-type",  "OAuth2Session")
+                conn.setRequestProperty("Cookie",               cookie)
+            }
             if (conn.responseCode == 200) conn.inputStream.bufferedReader().readText()
             else null
         } catch (e: Exception) { null }
@@ -821,7 +911,7 @@ class MainActivity : AppCompatActivity() {
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
-    private fun isLoginPage(url: String) =
+private fun isLoginPage(url: String) =
         url.contains("accounts/login") || url.contains("/login") ||
         url.contains("challenge") || url.contains("accounts/suspended")
 

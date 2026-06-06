@@ -66,6 +66,18 @@
             android:text="Paste a URL above and tap Load" />
 
         <Button
+            android:id="@+id/loginBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:text="Login"
+            android:textSize="11sp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:backgroundTint="@color/ig_pink"
+            android:textColor="@color/white" />
+
+        <Button
             android:id="@+id/browserBtn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
