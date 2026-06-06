@@ -33,6 +33,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var urlInput: EditText
     private lateinit var loadBtn: Button
     private lateinit var downloadBtn: Button
+    private lateinit var browserBtn: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var statusText: TextView
 
@@ -131,6 +132,7 @@ class MainActivity : AppCompatActivity() {
         urlInput    = findViewById(R.id.urlInput)
         loadBtn     = findViewById(R.id.loadBtn)
         downloadBtn = findViewById(R.id.downloadBtn)
+        browserBtn  = findViewById(R.id.browserBtn)
         progressBar = findViewById(R.id.progressBar)
         statusText  = findViewById(R.id.statusText)
 
@@ -163,6 +165,12 @@ class MainActivity : AppCompatActivity() {
         })
 
         downloadBtn.setOnClickListener { downloadAll() }
+
+        browserBtn.setOnClickListener {
+            val visible = webView.visibility == View.VISIBLE
+            webView.visibility = if (visible) View.GONE else View.VISIBLE
+            browserBtn.text    = if (visible) "Browser" else "Hide Browser"
+        }
 
         // Only process the launch intent on a truly fresh start.
         // Guards against two stale-intent cases:
@@ -238,14 +246,10 @@ class MainActivity : AppCompatActivity() {
 
                 when {
                     isLoginPage(url) -> {
-                        // Show the WebView so the user can actually log in
-                        webView.visibility = View.VISIBLE
                         justLoggedIn = true
-                        statusText.text = "Log in — your session is saved automatically"
+                        statusText.text = "Log in — tap Browser to open the login page"
                     }
                     isAfterLogin(url) -> {
-                        // Login done — hide the WebView again
-                        webView.visibility = View.GONE
                         justLoggedIn = false   // consume the flag — only fire once
                         statusText.text = "Logged in! Loading your link…"
                         pendingUrl?.let { pu ->
@@ -847,7 +851,9 @@ class MainActivity : AppCompatActivity() {
         activeDownloadSession = true
         capturedMedia.clear()
         updateDownloadButton()
+        // Collapse the browser panel on each new load so it doesn't stay open between sessions
         webView.visibility = View.GONE
+        browserBtn.text    = "Browser"
         webView.loadUrl(finalUrl, EXTRA_HEADERS)
     }
 

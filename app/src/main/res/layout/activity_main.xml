@@ -49,16 +49,36 @@
         android:progressBackgroundTint="#DDDDDD"
         android:minHeight="18dp" />
 
-    <!-- Status text -->
-    <TextView
-        android:id="@+id/statusText"
+    <!-- Status text + browser toggle on same row -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="6dp"
-        android:textSize="12sp"
-        android:text="Paste an Instagram URL above and tap Load" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
-    <!-- WebView: hidden by default, shown only when Instagram login is required -->
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="6dp"
+            android:textSize="12sp"
+            android:text="Paste a URL above and tap Load" />
+
+        <Button
+            android:id="@+id/browserBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:text="Browser"
+            android:textSize="11sp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:backgroundTint="#DDDDDD"
+            android:textColor="@color/black" />
+    </LinearLayout>
+
+    <!-- WebView: hidden by default, toggle with the Browser button above -->
     <WebView
         android:id="@+id/webView"
         android:layout_width="match_parent"

@@ -4,6 +4,7 @@ color black
 color ig_dark
 color ig_pink
 color white
+id browserBtn
 id downloadBtn
 id loadBtn
 id progressBar
