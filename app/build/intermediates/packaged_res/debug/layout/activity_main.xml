@@ -25,7 +25,8 @@
             android:padding="10dp"
             android:textSize="14sp"
             android:textColor="@color/black"
-            android:textColorHint="#888888" />
+            android:textColorHint="#888888"
+            android:saveEnabled="false" />
 
         <Button
             android:id="@+id/loadBtn"
