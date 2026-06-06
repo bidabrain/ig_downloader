@@ -126,11 +126,17 @@ class MainActivity : AppCompatActivity() {
         downloadBtn.setOnClickListener { downloadAll() }
 
         // Only process the launch intent on a truly fresh start.
-        // When Android kills the app and the user reopens it (from Recent Apps),
-        // it recreates the Activity with the ORIGINAL intent (e.g. a previous share URL).
-        // savedInstanceState is non-null in that case — skip to avoid stale re-downloads.
+        // Guards against two stale-intent cases:
+        //   1. Activity recreated after kill: savedInstanceState is non-null.
+        //   2. App reopened from Recent Apps history: FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY is set.
+        //      Android re-delivers the original share intent in this case, which would
+        //      re-trigger the last download session.
         if (savedInstanceState == null) {
-            intent?.let { handleIntent(it) }
+            val fromHistory = (intent?.flags ?: 0) and
+                Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
+            if (!fromHistory) {
+                intent?.let { handleIntent(it) }
+            }
         }
         // readyForAutoLoad is set in onResume(), which fires AFTER onRestoreInstanceState().
     }
@@ -606,9 +612,18 @@ class MainActivity : AppCompatActivity() {
             statusText.text = "No media found — make sure you are logged in"
             return
         }
+        val count = capturedMedia.size
         capturedMedia.values.forEach { enqueueDownload(it) }
-        statusText.text = "Downloading ${capturedMedia.size} item(s) — check notification bar"
-        Toast.makeText(this, "Downloading ${capturedMedia.size} item(s)", Toast.LENGTH_SHORT).show()
+        statusText.text = "Downloading $count item(s) — check notification bar"
+        Toast.makeText(this, "Downloading $count item(s)", Toast.LENGTH_SHORT).show()
+
+        // Clear session so that closing and reopening the app never re-triggers downloads.
+        // The DownloadManager runs as a system service and will finish independently.
+        activeDownloadSession = false
+        downloadTriggered = true
+        pendingUrl = null
+        capturedMedia.clear()
+        updateDownloadButton()
     }
 
     private fun enqueueDownload(item: MediaItem) {
