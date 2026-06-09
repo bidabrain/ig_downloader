@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
@@ -45,11 +44,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var statusText: TextView
 
-    // ── New UI state views ────────────────────────────────────────────────────
+    // ── Info-card state views ─────────────────────────────────────────────────
     private lateinit var emptyStateLayout: LinearLayout
     private lateinit var loadingStateLayout: LinearLayout
     private lateinit var mediaFoundLayout: LinearLayout
-    private lateinit var downloadingLayout: LinearLayout
+    private lateinit var downloadProgressSection: LinearLayout
     private lateinit var platformLabel: TextView
     private lateinit var mediaCountLabel: TextView
     private lateinit var mediaTypeLabel: TextView
@@ -57,25 +56,21 @@ class MainActivity : AppCompatActivity() {
     private lateinit var downloadProgressBar: ProgressBar
     private var currentInfoState = INFO_IDLE
 
+    // ── Download list ─────────────────────────────────────────────────────────
+    private lateinit var mediaListContainer: LinearLayout
+    private val downloadItemViews = mutableListOf<ItemViewHolder>()
+
     private val capturedMedia = LinkedHashMap<String, MediaItem>()
     private var pendingUrl: String? = null
     private var autoLoadRunnable: Runnable? = null
-    // Prevents onPageFinished firing multiple times from triggering multiple downloads
     private var downloadTriggered = false
-    // Suppresses TextWatcher auto-load during Activity state restoration on app open
     private var readyForAutoLoad = false
-    // True only when the user explicitly loaded a URL via loadUrl()
     private var activeDownloadSession = false
-    // Set to true only when we actually see a login page
     private var justLoggedIn = false
-    // Track the last URL we ran media extraction on
     private var lastExtractedUrl: String? = null
-    // The handler responsible for the current URL
     private var currentHandler: PlatformHandler? = null
 
     // ── Platform registry ─────────────────────────────────────────────────────
-    // Order matters: more specific matchers (Douyin) before generic ones (Instagram).
-    // To add a new platform: implement PlatformHandler, add it here, update the manifest.
     private val handlers: List<PlatformHandler> = listOf(
         DouyinHandler(),
         RedNoteHandler(),
@@ -90,11 +85,42 @@ class MainActivity : AppCompatActivity() {
             "Accept"           to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         )
         const val REQ_WRITE_STORAGE = 1001
+        const val INFO_IDLE         = 0
+        const val INFO_LOADING      = 1
+        const val INFO_READY        = 2
+        const val INFO_DOWNLOADING  = 3
+    }
 
-        const val INFO_IDLE        = 0
-        const val INFO_LOADING     = 1
-        const val INFO_READY       = 2
-        const val INFO_DOWNLOADING = 3
+    // ── Download list item holder ─────────────────────────────────────────────
+
+    enum class ItemStatus { WAITING, DOWNLOADING, DONE, ERROR }
+
+    inner class ItemViewHolder(
+        private val spinner: ProgressBar,
+        private val icon: ImageView
+    ) {
+        fun setStatus(status: ItemStatus) {
+            when (status) {
+                ItemStatus.WAITING -> {
+                    spinner.visibility = View.GONE
+                    icon.visibility    = View.GONE
+                }
+                ItemStatus.DOWNLOADING -> {
+                    spinner.visibility = View.VISIBLE
+                    icon.visibility    = View.GONE
+                }
+                ItemStatus.DONE -> {
+                    spinner.visibility = View.GONE
+                    icon.setImageResource(R.drawable.ic_check_circle)
+                    icon.visibility    = View.VISIBLE
+                }
+                ItemStatus.ERROR -> {
+                    spinner.visibility = View.GONE
+                    icon.setImageResource(R.drawable.ic_error_circle)
+                    icon.visibility    = View.VISIBLE
+                }
+            }
+        }
     }
 
     // ── JS bridge ─────────────────────────────────────────────────────────────
@@ -102,13 +128,11 @@ class MainActivity : AppCompatActivity() {
     inner class WebBridge {
         @JavascriptInterface
         fun foundMedia(type: String, url: String) {
-            // Delegate to the context so all filtering and threading lives in one place.
             makeContext().reportMedia(type, url)
         }
 
         @JavascriptInterface
         fun foundAppId(id: String) {
-            // Platform-specific hook; only InstagramHandler acts on this.
             currentHandler?.onFoundAppId(id)
         }
     }
@@ -120,25 +144,26 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        toolbar             = findViewById(R.id.toolbar)
-        webView             = findViewById(R.id.webView)
-        urlInput            = findViewById(R.id.urlInput)
-        loadBtn             = findViewById(R.id.loadBtn)
-        downloadBtn         = findViewById(R.id.downloadBtn)
-        browserBtn          = findViewById(R.id.browserBtn)
-        loginBtn            = findViewById(R.id.loginBtn)
-        progressBar         = findViewById(R.id.progressBar)
-        statusText          = findViewById(R.id.statusText)
+        toolbar                = findViewById(R.id.toolbar)
+        webView                = findViewById(R.id.webView)
+        urlInput               = findViewById(R.id.urlInput)
+        loadBtn                = findViewById(R.id.loadBtn)
+        downloadBtn            = findViewById(R.id.downloadBtn)
+        browserBtn             = findViewById(R.id.browserBtn)
+        loginBtn               = findViewById(R.id.loginBtn)
+        progressBar            = findViewById(R.id.progressBar)
+        statusText             = findViewById(R.id.statusText)
 
-        emptyStateLayout    = findViewById(R.id.emptyStateLayout)
-        loadingStateLayout  = findViewById(R.id.loadingStateLayout)
-        mediaFoundLayout    = findViewById(R.id.mediaFoundLayout)
-        downloadingLayout   = findViewById(R.id.downloadingLayout)
-        platformLabel       = findViewById(R.id.platformLabel)
-        mediaCountLabel     = findViewById(R.id.mediaCountLabel)
-        mediaTypeLabel      = findViewById(R.id.mediaTypeLabel)
-        downloadStatusLabel = findViewById(R.id.downloadStatusLabel)
-        downloadProgressBar = findViewById(R.id.downloadProgressBar)
+        emptyStateLayout       = findViewById(R.id.emptyStateLayout)
+        loadingStateLayout     = findViewById(R.id.loadingStateLayout)
+        mediaFoundLayout       = findViewById(R.id.mediaFoundLayout)
+        downloadProgressSection = findViewById(R.id.downloadProgressSection)
+        platformLabel          = findViewById(R.id.platformLabel)
+        mediaCountLabel        = findViewById(R.id.mediaCountLabel)
+        mediaTypeLabel         = findViewById(R.id.mediaTypeLabel)
+        downloadStatusLabel    = findViewById(R.id.downloadStatusLabel)
+        downloadProgressBar    = findViewById(R.id.downloadProgressBar)
+        mediaListContainer     = findViewById(R.id.mediaListContainer)
 
         urlInput.setText("")
         setupWebView()
@@ -149,7 +174,6 @@ class MainActivity : AppCompatActivity() {
             else Toast.makeText(this, "Enter a URL first", Toast.LENGTH_SHORT).show()
         }
 
-        // Keyboard "Go" key triggers load
         urlInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_GO) {
                 val url = urlInput.text.toString().trim()
@@ -159,7 +183,6 @@ class MainActivity : AppCompatActivity() {
             } else false
         }
 
-        // Auto-load 600 ms after pasting a recognised URL
         urlInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -239,16 +262,11 @@ class MainActivity : AppCompatActivity() {
 
         webView.webViewClient = object : WebViewClient() {
 
-            // Re-apply EXTRA_HEADERS on every GET so sites never see the WebView fingerprint
-            // ("X-Requested-With: com.instadownloader") that Android injects by default.
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val scheme = request.url.scheme?.lowercase() ?: ""
                 if (scheme != "http" && scheme != "https") return true
                 if (request.method?.uppercase() == "GET") {
                     val targetUrl = request.url.toString()
-                    // SPA JS navigations (window.location.replace / assign) to the same URL
-                    // would cause onInterceptRequestFull to re-fetch and re-serve the spoofed
-                    // HTML in an infinite loop. Consume the navigation without reloading.
                     if (targetUrl == view.url) return true
                     view.loadUrl(targetUrl, EXTRA_HEADERS)
                     return true
@@ -279,18 +297,12 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     else -> {
-                        if (pendingUrl == null) {
-                            setInfoState(INFO_IDLE)
-                            return
-                        }
-                        // URL equality guard lets redirect chains work:
-                        // short-link fires onPageFinished (no media found), then the
-                        // final URL fires again (different URL → processed fresh).
+                        if (pendingUrl == null) { setInfoState(INFO_IDLE); return }
                         if (downloadTriggered && url == lastExtractedUrl) return
                         downloadTriggered = true
                         lastExtractedUrl  = url
                         currentHandler?.onPageFinished(url, makeContext())
-                        // Fallback: if no media appears after 8 s, leave loading state
+                        // Fallback: if still loading after 8 s with no media, show idle
                         webView.postDelayed({
                             if (capturedMedia.isEmpty() && currentInfoState == INFO_LOADING)
                                 setInfoState(INFO_IDLE)
@@ -324,30 +336,26 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        webView.webChromeClient = object : WebChromeClient() {
-            // Page-load progress is shown via the circular spinner in loadingStateLayout;
-            // no horizontal progress bar update needed here.
-        }
+        webView.webChromeClient = object : WebChromeClient() {}
     }
 
     // ── Handler context ───────────────────────────────────────────────────────
 
-    /** Create the HandlerContext adapter that connects handlers to this Activity. */
     private fun makeContext(): HandlerContext = object : HandlerContext {
         override fun reportMedia(type: String, url: String) {
             if (url.isBlank() || url.startsWith("blob:") || url.startsWith("data:")) return
             if (!activeDownloadSession) return
             val source = currentHandler?.platformId ?: "instagram"
-            // Always post to the UI thread — this may be called from any thread.
             runOnUiThread {
-                capturedMedia[url] = MediaItem(type, url, buildFilename(url, type), source)
-                updateDownloadButton()
+                val item = MediaItem(type, url, buildFilename(url, type), source)
+                capturedMedia[url] = item
+                updateDownloadHeader()
+                addMediaListItem(item)
             }
         }
         override fun setStatus(msg: String) {
             runOnUiThread {
                 statusText.text = msg
-                // Show the status message if currently stuck in loading state
                 if (currentInfoState == INFO_LOADING) setInfoState(INFO_IDLE)
             }
         }
@@ -359,19 +367,15 @@ class MainActivity : AppCompatActivity() {
         override fun navigateTo(url: String)             { runOnUiThread { loadUrl(url) } }
         override fun navigateForDisplay(url: String) {
             runOnUiThread {
-                // Apply the handler's preferred UA for the destination (e.g. DESKTOP_UA for douyin.com)
                 webView.settings.userAgentString = currentHandler?.preferredUserAgent(url)
                 webView.loadUrl(url, EXTRA_HEADERS)
             }
         }
-        override fun setUserAgent(ua: String?)           { runOnUiThread { webView.settings.userAgentString = ua } }
+        override fun setUserAgent(ua: String?) { runOnUiThread { webView.settings.userAgentString = ua } }
     }
 
     // ── UI state management ───────────────────────────────────────────────────
 
-    /** Show or hide the built-in browser. When visible, a back arrow appears in
-     *  the toolbar so the user can always close the browser regardless of scroll
-     *  position. */
     private fun showBrowser(visible: Boolean) {
         webView.visibility = if (visible) View.VISIBLE else View.GONE
         browserBtn.text    = if (visible) "Hide Browser" else "Browser"
@@ -386,10 +390,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun setInfoState(state: Int) {
         currentInfoState = state
-        emptyStateLayout.visibility   = if (state == INFO_IDLE)         View.VISIBLE else View.GONE
-        loadingStateLayout.visibility = if (state == INFO_LOADING)      View.VISIBLE else View.GONE
-        mediaFoundLayout.visibility   = if (state == INFO_READY)        View.VISIBLE else View.GONE
-        downloadingLayout.visibility  = if (state == INFO_DOWNLOADING)  View.VISIBLE else View.GONE
+        emptyStateLayout.visibility     = if (state == INFO_IDLE)    View.VISIBLE else View.GONE
+        loadingStateLayout.visibility   = if (state == INFO_LOADING) View.VISIBLE else View.GONE
+        // Both READY and DOWNLOADING keep the media list card visible
+        mediaFoundLayout.visibility     = if (state == INFO_READY || state == INFO_DOWNLOADING) View.VISIBLE else View.GONE
+        downloadProgressSection.visibility = if (state == INFO_DOWNLOADING) View.VISIBLE else View.GONE
     }
 
     private fun platformColorFor(source: String): Int = when (source) {
@@ -416,10 +421,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun isAfterLogin(url: String): Boolean {
         if (!justLoggedIn) return false
-        val trimmed   = url.trimEnd('/')
-        val isIgHome  = trimmed == "https://www.instagram.com" || trimmed == "https://instagram.com"
-        val isXHome   = trimmed == "https://x.com/home"        || trimmed == "https://twitter.com/home"
-        val isDyHome  = trimmed == "https://www.douyin.com"
+        val trimmed  = url.trimEnd('/')
+        val isIgHome = trimmed == "https://www.instagram.com" || trimmed == "https://instagram.com"
+        val isXHome  = trimmed == "https://x.com/home"        || trimmed == "https://twitter.com/home"
+        val isDyHome = trimmed == "https://www.douyin.com"
         return (isIgHome || isXHome || isDyHome) && pendingUrl != null && pendingUrl != trimmed
     }
 
@@ -429,43 +434,80 @@ class MainActivity : AppCompatActivity() {
             finalUrl = "https://$finalUrl"
         if (finalUrl.startsWith("http://"))
             finalUrl = finalUrl.replaceFirst("http://", "https://")
-        // Let the handler declare its preferred UA; fall back to system default (null).
-        // This replaces the blanket reset to null so Douyin's desktop UA survives
-        // into webView.loadUrl() and is visible to the SPA's network requests.
-        currentHandler    = handlers.firstOrNull { it.matches(finalUrl) }
-        // Fall back to WEB_UA (not null/system-default) so the WebView never sends the
-        // Android "; wv" marker that Google Safe Browsing flags as a disallowed user-agent.
+
+        currentHandler = handlers.firstOrNull { it.matches(finalUrl) }
         webView.settings.userAgentString = currentHandler?.preferredUserAgent(finalUrl) ?: WEB_UA
         currentHandler?.onUrlCommitted(finalUrl)
-        pendingUrl        = finalUrl
-        downloadTriggered = false
-        lastExtractedUrl  = null
+
+        pendingUrl            = finalUrl
+        downloadTriggered     = false
+        lastExtractedUrl      = null
         activeDownloadSession = true
+
+        // Reset media list for new session
         capturedMedia.clear()
+        downloadItemViews.clear()
+        mediaListContainer.removeAllViews()
+
         showBrowser(false)
         webView.loadUrl(finalUrl, EXTRA_HEADERS)
     }
 
-    private fun updateDownloadButton() {
+    /** Update the compact header row (platform pill + count + type). */
+    private fun updateDownloadHeader() {
         val n = capturedMedia.size
-        if (n > 0) {
-            val source = capturedMedia.values
-                .groupingBy { it.source }.eachCount()
-                .maxByOrNull { it.value }?.key ?: "unknown"
-            val types = capturedMedia.values.map { it.type }.distinct()
-            val typeText = when {
-                "video" in types && "image" in types -> "视频 + 图片"
-                "video" in types                     -> "视频"
-                else                                 -> "图片"
-            }
-            // Tint the platform pill with the platform's brand color
-            (platformLabel.background.mutate() as? GradientDrawable)
-                ?.setColor(platformColorFor(source))
-            platformLabel.text  = platformNameFor(source)
-            mediaCountLabel.text = "$n 个文件"
-            mediaTypeLabel.text  = "$typeText · 准备下载"
-            setInfoState(INFO_READY)
+        if (n == 0) return
+
+        val source = capturedMedia.values
+            .groupingBy { it.source }.eachCount()
+            .maxByOrNull { it.value }?.key ?: "unknown"
+        val types = capturedMedia.values.map { it.type }.distinct()
+        val typeText = when {
+            "video" in types && "image" in types -> "视频+图片"
+            "video" in types                     -> "视频"
+            else                                 -> "图片"
         }
+
+        val color = platformColorFor(source)
+        (platformLabel.background.mutate() as? GradientDrawable)?.setColor(color)
+        platformLabel.text  = platformNameFor(source)
+        mediaCountLabel.text = "$n 个文件"
+        mediaTypeLabel.text  = typeText
+
+        if (currentInfoState != INFO_DOWNLOADING) setInfoState(INFO_READY)
+    }
+
+    /** Inflate one row and append it to the media list. */
+    private fun addMediaListItem(item: MediaItem) {
+        // Thin divider between rows (not before the first)
+        if (mediaListContainer.childCount > 0) {
+            val px1 = (resources.displayMetrics.density).toInt().coerceAtLeast(1)
+            val divider = View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, px1
+                ).also { lp -> lp.marginStart = (16 * resources.displayMetrics.density).toInt() }
+                setBackgroundColor(ContextCompat.getColor(this@MainActivity, R.color.divider))
+            }
+            mediaListContainer.addView(divider)
+        }
+
+        val row      = layoutInflater.inflate(R.layout.item_media, mediaListContainer, false)
+        val colorBar = row.findViewById<View>(R.id.itemColorBar)
+        val filename = row.findViewById<TextView>(R.id.itemFilename)
+        val platform = row.findViewById<TextView>(R.id.itemPlatform)
+        val type     = row.findViewById<TextView>(R.id.itemType)
+        val spinner  = row.findViewById<ProgressBar>(R.id.itemProgressBar)
+        val icon     = row.findViewById<ImageView>(R.id.itemStatusIcon)
+
+        val color = platformColorFor(item.source)
+        colorBar.setBackgroundColor(color)
+        filename.text = item.filename
+        (platform.background.mutate() as? GradientDrawable)?.setColor(color)
+        platform.text = platformNameFor(item.source)
+        type.text     = if (item.type == "video") "视频" else "图片"
+
+        mediaListContainer.addView(row)
+        downloadItemViews.add(ItemViewHolder(spinner, icon))
     }
 
     // ── Download ──────────────────────────────────────────────────────────────
@@ -498,12 +540,17 @@ class MainActivity : AppCompatActivity() {
         downloadBtn.isEnabled        = false
         downloadProgressBar.max      = 100
         downloadProgressBar.progress = 0
+        // Reset all item rows to "waiting" before download starts
+        downloadItemViews.forEach { it.setStatus(ItemStatus.WAITING) }
         setInfoState(INFO_DOWNLOADING)
 
         Thread {
             var succeeded = 0
             for ((index, item) in items.withIndex()) {
                 val num = index + 1
+                runOnUiThread {
+                    downloadItemViews.getOrNull(index)?.setStatus(ItemStatus.DOWNLOADING)
+                }
                 try {
                     downloadFileInApp(item) { pct ->
                         runOnUiThread {
@@ -512,8 +559,12 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     succeeded++
+                    runOnUiThread {
+                        downloadItemViews.getOrNull(index)?.setStatus(ItemStatus.DONE)
+                    }
                 } catch (e: Exception) {
                     runOnUiThread {
+                        downloadItemViews.getOrNull(index)?.setStatus(ItemStatus.ERROR)
                         downloadStatusLabel.text = "第 $num 个失败：${e.message}"
                     }
                 }
@@ -524,7 +575,8 @@ class MainActivity : AppCompatActivity() {
                     "下载完成，共 $total 个文件，保存至 下载/$folderName/"
                 else
                     "完成：$succeeded/$total 成功"
-                setInfoState(INFO_IDLE)
+                // Keep list visible on completion; return to idle only clears on next loadUrl
+                setInfoState(INFO_READY)
             }
         }.start()
     }

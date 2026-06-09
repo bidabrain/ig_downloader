@@ -25,14 +25,14 @@
             app:navigationIconTint="@color/on_primary" />
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- ── Content Area (scroll cards + webview overlay) ─────────────────── -->
+    <!-- ── Content Area ───────────────────────────────────────────────────── -->
     <FrameLayout
         android:id="@+id/contentFrame"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <!-- Scrollable cards (visible when WebView is hidden) -->
+        <!-- Scrollable cards -->
         <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -60,7 +60,6 @@
                         android:orientation="vertical"
                         android:padding="16dp">
 
-                        <!-- URL input field -->
                         <com.google.android.material.textfield.TextInputLayout
                             android:id="@+id/urlInputLayout"
                             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -148,13 +147,12 @@
                     app:cardElevation="2dp"
                     app:strokeWidth="0dp">
 
-                    <!-- All states share this FrameLayout; only one is visible at a time -->
                     <FrameLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:minHeight="200dp">
 
-                        <!-- IDLE: hint text -->
+                        <!-- IDLE: hint / status text -->
                         <LinearLayout
                             android:id="@+id/emptyStateLayout"
                             android:layout_width="match_parent"
@@ -203,80 +201,108 @@
                                 android:textSize="14sp" />
                         </LinearLayout>
 
-                        <!-- MEDIA FOUND: platform badge + count -->
+                        <!-- READY / DOWNLOADING: media list + optional progress bar -->
                         <LinearLayout
                             android:id="@+id/mediaFoundLayout"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
-                            android:padding="20dp"
-                            android:minHeight="200dp"
                             android:visibility="gone">
 
-                            <!-- Platform pill -->
-                            <TextView
-                                android:id="@+id/platformLabel"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:background="@drawable/bg_pill"
-                                android:paddingStart="14dp"
-                                android:paddingEnd="14dp"
-                                android:paddingTop="5dp"
-                                android:paddingBottom="5dp"
-                                android:textColor="@color/white"
-                                android:textSize="12sp"
-                                android:text="Instagram" />
-
-                            <!-- Count -->
-                            <TextView
-                                android:id="@+id/mediaCountLabel"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="16dp"
-                                android:text="1 个文件"
-                                android:textColor="@color/on_surface"
-                                android:textSize="28sp"
-                                android:textStyle="bold" />
-
-                            <!-- Type label -->
-                            <TextView
-                                android:id="@+id/mediaTypeLabel"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:text="视频 · 准备下载"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="14sp" />
-
-                        </LinearLayout>
-
-                        <!-- DOWNLOADING: progress bar + status -->
-                        <LinearLayout
-                            android:id="@+id/downloadingLayout"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="20dp"
-                            android:minHeight="200dp"
-                            android:visibility="gone">
-
-                            <TextView
-                                android:id="@+id/downloadStatusLabel"
+                            <!-- Compact header: platform pill + count + type -->
+                            <LinearLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="正在下载…"
-                                android:textColor="@color/on_surface"
-                                android:textSize="15sp"
-                                android:layout_marginBottom="16dp" />
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:padding="16dp">
 
-                            <ProgressBar
-                                android:id="@+id/downloadProgressBar"
-                                style="?android:attr/progressBarStyleHorizontal"
+                                <TextView
+                                    android:id="@+id/platformLabel"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:background="@drawable/bg_pill"
+                                    android:paddingStart="12dp"
+                                    android:paddingEnd="12dp"
+                                    android:paddingTop="4dp"
+                                    android:paddingBottom="4dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:text="Instagram" />
+
+                                <TextView
+                                    android:id="@+id/mediaCountLabel"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:layout_marginStart="12dp"
+                                    android:textSize="16sp"
+                                    android:textStyle="bold"
+                                    android:textColor="@color/on_surface"
+                                    android:text="1 个文件" />
+
+                                <TextView
+                                    android:id="@+id/mediaTypeLabel"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:textSize="13sp"
+                                    android:textColor="@color/text_secondary"
+                                    android:text="视频" />
+
+                            </LinearLayout>
+
+                            <!-- Divider below header -->
+                            <View
                                 android:layout_width="match_parent"
-                                android:layout_height="8dp"
-                                android:max="100"
-                                android:progressTint="@color/primary"
-                                android:progressBackgroundTint="@color/divider" />
+                                android:layout_height="1dp"
+                                android:background="@color/divider" />
+
+                            <!-- Media items (added dynamically) -->
+                            <LinearLayout
+                                android:id="@+id/mediaListContainer"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical" />
+
+                            <!-- Download progress section (shown only while downloading) -->
+                            <LinearLayout
+                                android:id="@+id/downloadProgressSection"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:visibility="gone">
+
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="1dp"
+                                    android:background="@color/divider" />
+
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="vertical"
+                                    android:padding="16dp">
+
+                                    <TextView
+                                        android:id="@+id/downloadStatusLabel"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:text="正在下载…"
+                                        android:textColor="@color/on_surface"
+                                        android:textSize="14sp"
+                                        android:layout_marginBottom="10dp" />
+
+                                    <ProgressBar
+                                        android:id="@+id/downloadProgressBar"
+                                        style="?android:attr/progressBarStyleHorizontal"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="8dp"
+                                        android:max="100"
+                                        android:progressTint="@color/primary"
+                                        android:progressBackgroundTint="@color/divider" />
+
+                                </LinearLayout>
+                            </LinearLayout>
 
                         </LinearLayout>
 
