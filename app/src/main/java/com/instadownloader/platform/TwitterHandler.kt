@@ -132,48 +132,50 @@ class TwitterHandler : PlatformHandler {
         if (conn.responseCode == 200) conn.inputStream.bufferedReader().readText() else null
     } catch (_: Exception) { null }
 
-    private fun parseResponse(json: String, tweetId: String): List<MediaItem> = try {
-        val root   = JSONObject(json)
-        val result = root.getJSONObject("data").getJSONObject("tweetResult").getJSONObject("result")
-        val tweet  = if (result.has("tweet")) result.getJSONObject("tweet") else result
+    private fun parseResponse(json: String, tweetId: String): List<MediaItem> {
+        return try {
+            val root   = JSONObject(json)
+            val result = root.getJSONObject("data").getJSONObject("tweetResult").getJSONObject("result")
+            val tweet  = if (result.has("tweet")) result.getJSONObject("tweet") else result
 
-        val username = try {
-            tweet.getJSONObject("core")
-                .getJSONObject("user_results").getJSONObject("result")
-                .getJSONObject("legacy").getString("screen_name")
-        } catch (_: Exception) { "twitter" }
+            val username = try {
+                tweet.getJSONObject("core")
+                    .getJSONObject("user_results").getJSONObject("result")
+                    .getJSONObject("legacy").getString("screen_name")
+            } catch (_: Exception) { "twitter" }
 
-        val legacy      = tweet.optJSONObject("legacy") ?: return emptyList()
-        val extEntities = legacy.optJSONObject("extended_entities") ?: return emptyList()
-        val mediaArray  = extEntities.optJSONArray("media") ?: return emptyList()
+            val legacy      = tweet.optJSONObject("legacy") ?: return emptyList()
+            val extEntities = legacy.optJSONObject("extended_entities") ?: return emptyList()
+            val mediaArray  = extEntities.optJSONArray("media") ?: return emptyList()
 
-        val results = mutableListOf<MediaItem>()
-        for (i in 0 until mediaArray.length()) {
-            val media = mediaArray.getJSONObject(i); val idx = i + 1
-            when (media.optString("type")) {
-                "photo" -> {
-                    val base = media.optString("media_url_https")
-                    if (base.isNotEmpty())
-                        results += MediaItem("image", "$base?format=jpg&name=4096x4096",
-                            "${username}_${tweetId}_img$idx.jpg", "twitter")
-                }
-                "video", "animated_gif" -> {
-                    val variants = media.optJSONObject("video_info")
-                        ?.optJSONArray("variants") ?: continue
-                    var bestUrl = ""; var bestBitrate = -1
-                    for (j in 0 until variants.length()) {
-                        val v = variants.getJSONObject(j)
-                        if (v.optString("content_type") == "video/mp4") {
-                            val br = v.optInt("bitrate", 0)
-                            if (br > bestBitrate) { bestBitrate = br; bestUrl = v.optString("url") }
-                        }
+            val results = mutableListOf<MediaItem>()
+            for (i in 0 until mediaArray.length()) {
+                val media = mediaArray.getJSONObject(i); val idx = i + 1
+                when (media.optString("type")) {
+                    "photo" -> {
+                        val base = media.optString("media_url_https")
+                        if (base.isNotEmpty())
+                            results += MediaItem("image", "$base?format=jpg&name=4096x4096",
+                                "${username}_${tweetId}_img$idx.jpg", "twitter")
                     }
-                    if (bestUrl.isNotEmpty())
-                        results += MediaItem("video", bestUrl,
-                            "${username}_${tweetId}_vid$idx.mp4", "twitter")
+                    "video", "animated_gif" -> {
+                        val variants = media.optJSONObject("video_info")
+                            ?.optJSONArray("variants") ?: continue
+                        var bestUrl = ""; var bestBitrate = -1
+                        for (j in 0 until variants.length()) {
+                            val v = variants.getJSONObject(j)
+                            if (v.optString("content_type") == "video/mp4") {
+                                val br = v.optInt("bitrate", 0)
+                                if (br > bestBitrate) { bestBitrate = br; bestUrl = v.optString("url") }
+                            }
+                        }
+                        if (bestUrl.isNotEmpty())
+                            results += MediaItem("video", bestUrl,
+                                "${username}_${tweetId}_vid$idx.mp4", "twitter")
+                    }
                 }
             }
-        }
-        results
-    } catch (_: Exception) { emptyList() }
+            results
+        } catch (_: Exception) { emptyList() }
+    }
 }

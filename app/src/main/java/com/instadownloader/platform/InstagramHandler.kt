@@ -143,16 +143,18 @@ class InstagramHandler : PlatformHandler {
         mediaItemsFromResource(resource, username, shortcode)
     } catch (_: Exception) { emptyList() }
 
-    private fun parseQueryIdResponse(json: String, shortcode: String): List<MediaItem> = try {
-        val root  = JSONObject(json)
-        val items = root.getJSONObject("data")
-            .getJSONObject("xdt_api__v1__media__shortcode__web_info")
-            .getJSONArray("items")
-        if (items.length() == 0) return emptyList()
-        val item     = items.getJSONObject(0)
-        val username = item.optJSONObject("user")?.optString("username") ?: "instagram"
-        mediaItemsFromV1Item(item, username, shortcode)
-    } catch (_: Exception) { emptyList() }
+    private fun parseQueryIdResponse(json: String, shortcode: String): List<MediaItem> {
+        return try {
+            val root  = JSONObject(json)
+            val items = root.getJSONObject("data")
+                .getJSONObject("xdt_api__v1__media__shortcode__web_info")
+                .getJSONArray("items")
+            if (items.length() == 0) return emptyList()
+            val item     = items.getJSONObject(0)
+            val username = item.optJSONObject("user")?.optString("username") ?: "instagram"
+            mediaItemsFromV1Item(item, username, shortcode)
+        } catch (_: Exception) { emptyList() }
+    }
 
     private fun mediaItemsFromResource(resource: JSONObject, username: String, shortcode: String): List<MediaItem> {
         val results  = mutableListOf<MediaItem>()
