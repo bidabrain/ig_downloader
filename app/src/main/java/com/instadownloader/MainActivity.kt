@@ -336,7 +336,9 @@ class MainActivity : AppCompatActivity() {
         // This replaces the blanket reset to null so Douyin's desktop UA survives
         // into webView.loadUrl() and is visible to the SPA's network requests.
         currentHandler    = handlers.firstOrNull { it.matches(finalUrl) }
-        webView.settings.userAgentString = currentHandler?.preferredUserAgent(finalUrl)
+        // Fall back to WEB_UA (not null/system-default) so the WebView never sends the
+        // Android "; wv" marker that Google Safe Browsing flags as a disallowed user-agent.
+        webView.settings.userAgentString = currentHandler?.preferredUserAgent(finalUrl) ?: WEB_UA
         currentHandler?.onUrlCommitted(finalUrl)
         pendingUrl        = finalUrl
         downloadTriggered = false
