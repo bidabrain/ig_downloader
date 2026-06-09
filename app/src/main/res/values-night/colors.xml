@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark mode overrides — all @color/* references in layouts automatically
+         pick up these values when the system is in night mode. -->
+
+    <color name="background">#0F172A</color>   <!-- dark navy -->
+    <color name="surface">#1E293B</color>       <!-- dark slate card/bar -->
+    <color name="on_surface">#E2E8F0</color>   <!-- light text on dark bg -->
+    <color name="text_secondary">#94A3B8</color>
+    <color name="divider">#334155</color>
+
+    <!-- Slightly brighter indigo so the primary accent stays visible on dark bg -->
+    <color name="primary">#6366F1</color>
+    <color name="primary_dark">#4F46E5</color>
+</resources>
