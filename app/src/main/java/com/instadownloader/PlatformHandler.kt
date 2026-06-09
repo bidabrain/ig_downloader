@@ -1,5 +1,8 @@
 package com.instadownloader
 
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+
 // Shared UA used by WebView and most platform HTTP calls
 const val WEB_UA = "Mozilla/5.0 (Linux; Android 13; Pixel 7) " +
     "AppleWebKit/537.36 (KHTML, like Gecko) " +
@@ -24,6 +27,10 @@ interface HandlerContext {
     fun runBackground(action: () -> Unit)
     /** Run [action] on the UI thread. */
     fun runOnUi(action: () -> Unit)
+    /** Load a new URL in the WebView (must be called on the UI thread or via runOnUi). */
+    fun navigateTo(url: String)
+    /** Temporarily override the WebView User-Agent string. Pass null to restore default. */
+    fun setUserAgent(ua: String?)
 }
 
 /**
@@ -56,6 +63,17 @@ interface PlatformHandler {
 
     /** Called for every WebView sub-resource request. Used to capture CDN media URLs. */
     fun onInterceptRequest(url: String, ctx: HandlerContext)
+
+    /**
+     * Called from shouldInterceptRequest with the full request object.
+     * Return a [WebResourceResponse] to proxy the request (handler reads the body
+     * and feeds the same bytes back to the WebView), or null to let the WebView
+     * make the request normally (default).
+     *
+     * Use this when you need to read the response body of a sub-resource request
+     * (e.g. an API call whose response contains media URLs).
+     */
+    fun onInterceptRequestFull(request: WebResourceRequest, ctx: HandlerContext): WebResourceResponse? = null
 
     /**
      * Return HTTP headers to use when downloading [itemUrl].

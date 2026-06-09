@@ -187,6 +187,7 @@ class MainActivity : AppCompatActivity() {
             useWideViewPort      = true
             mixedContentMode     = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             userAgentString      = WEB_UA
+            mediaPlaybackRequiresUserGesture = false
         }
 
         CookieManager.getInstance().apply {
@@ -257,8 +258,12 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-                if (activeDownloadSession)
-                    currentHandler?.onInterceptRequest(request.url.toString(), makeContext())
+                if (activeDownloadSession) {
+                    val ctx = makeContext()
+                    val proxied = currentHandler?.onInterceptRequestFull(request, ctx)
+                    if (proxied != null) return proxied
+                    currentHandler?.onInterceptRequest(request.url.toString(), ctx)
+                }
                 return null
             }
         }
@@ -290,6 +295,8 @@ class MainActivity : AppCompatActivity() {
         override fun postDelayed(ms: Long, action: () -> Unit) { webView.postDelayed(action, ms) }
         override fun runBackground(action: () -> Unit)   { Thread(action).start() }
         override fun runOnUi(action: () -> Unit)         { runOnUiThread(action) }
+        override fun navigateTo(url: String)             { runOnUiThread { loadUrl(url) } }
+        override fun setUserAgent(ua: String?)           { runOnUiThread { webView.settings.userAgentString = ua } }
     }
 
     // ── Navigation helpers ────────────────────────────────────────────────────
@@ -313,6 +320,9 @@ class MainActivity : AppCompatActivity() {
             finalUrl = "https://$finalUrl"
         if (finalUrl.startsWith("http://"))
             finalUrl = finalUrl.replaceFirst("http://", "https://")
+        // Reset UA to default before each new navigation so a previous handler's
+        // custom UA (e.g. Douyin desktop UA) doesn't bleed into other platforms.
+        webView.settings.userAgentString = null
         currentHandler    = handlers.firstOrNull { it.matches(finalUrl) }
         currentHandler?.onUrlCommitted(finalUrl)
         pendingUrl        = finalUrl
@@ -404,8 +414,9 @@ class MainActivity : AppCompatActivity() {
             headers.forEach { (k, v) -> setRequestProperty(k, v) }
             connect()
         }
-        if (conn.responseCode != HttpURLConnection.HTTP_OK)
-            throw Exception("HTTP ${conn.responseCode}")
+        val responseCode = conn.responseCode
+        if (responseCode != HttpURLConnection.HTTP_OK && responseCode != HttpURLConnection.HTTP_PARTIAL)
+            throw Exception("HTTP $responseCode")
 
         val totalBytes = conn.contentLengthLong
         val input      = conn.inputStream
