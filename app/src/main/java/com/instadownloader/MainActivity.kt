@@ -35,6 +35,7 @@ import java.net.URL
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var toolbar: com.google.android.material.appbar.MaterialToolbar
     private lateinit var webView: WebView
     private lateinit var urlInput: EditText
     private lateinit var loadBtn: Button
@@ -119,6 +120,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        toolbar             = findViewById(R.id.toolbar)
         webView             = findViewById(R.id.webView)
         urlInput            = findViewById(R.id.urlInput)
         loadBtn             = findViewById(R.id.loadBtn)
@@ -176,16 +178,13 @@ class MainActivity : AppCompatActivity() {
         downloadBtn.setOnClickListener { downloadAll() }
 
         browserBtn.setOnClickListener {
-            val visible = webView.visibility == View.VISIBLE
-            webView.visibility = if (visible) View.GONE else View.VISIBLE
-            browserBtn.text    = if (visible) "Browser" else "Hide Browser"
+            showBrowser(webView.visibility != View.VISIBLE)
         }
 
         loginBtn.setOnClickListener {
             val loginUrl = currentHandler?.loginUrl ?: "https://www.instagram.com/accounts/login/"
-            webView.visibility = View.VISIBLE
-            browserBtn.text    = "Hide Browser"
             webView.loadUrl(loginUrl, EXTRA_HEADERS)
+            showBrowser(true)
         }
 
         if (savedInstanceState == null) {
@@ -370,6 +369,21 @@ class MainActivity : AppCompatActivity() {
 
     // ── UI state management ───────────────────────────────────────────────────
 
+    /** Show or hide the built-in browser. When visible, a back arrow appears in
+     *  the toolbar so the user can always close the browser regardless of scroll
+     *  position. */
+    private fun showBrowser(visible: Boolean) {
+        webView.visibility = if (visible) View.VISIBLE else View.GONE
+        browserBtn.text    = if (visible) "Hide Browser" else "Browser"
+        if (visible) {
+            toolbar.setNavigationIcon(R.drawable.ic_arrow_back)
+            toolbar.setNavigationOnClickListener { showBrowser(false) }
+        } else {
+            toolbar.navigationIcon = null
+            toolbar.setNavigationOnClickListener(null)
+        }
+    }
+
     private fun setInfoState(state: Int) {
         currentInfoState = state
         emptyStateLayout.visibility   = if (state == INFO_IDLE)         View.VISIBLE else View.GONE
@@ -428,8 +442,7 @@ class MainActivity : AppCompatActivity() {
         lastExtractedUrl  = null
         activeDownloadSession = true
         capturedMedia.clear()
-        webView.visibility = View.GONE
-        browserBtn.text    = "Browser"
+        showBrowser(false)
         webView.loadUrl(finalUrl, EXTRA_HEADERS)
     }
 
