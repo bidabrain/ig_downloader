@@ -12,5 +12,9 @@
         <domain includeSubdomains="true">x.com</domain>
         <domain includeSubdomains="true">twitter.com</domain>
         <domain includeSubdomains="true">twimg.com</domain>
+        <domain includeSubdomains="true">douyin.com</domain>
+        <domain includeSubdomains="true">iesdouyin.com</domain>
+        <domain includeSubdomains="true">bytecdn.cn</domain>
+        <domain includeSubdomains="true">pstatp.com</domain>
     </domain-config>
 </network-security-config>

@@ -1,15 +1,16 @@
 # InstaDownloader
 
-An Android app for downloading photos and videos from Instagram, X (Twitter), and RedNote (小红书).
+An Android app for downloading photos and videos from Instagram, X (Twitter), RedNote (小红书), and Douyin (抖音).
 
 ## Features
 
 - Download photos and videos from Instagram posts and reels
 - Download photos, videos, and GIFs from X (Twitter) posts
 - Download photos and videos from RedNote (小红书 / XiaoHongShu) notes
+- Download videos and image sets from Douyin (抖音) posts
 - Supports multi-photo carousel posts on all platforms
 - Persistent login — log in once per platform, session is saved automatically
-- Share a URL directly from the Instagram, X, or RedNote app to open it instantly
+- Share a URL directly from any supported app to open it instantly
 
 ## Usage
 
@@ -61,9 +62,27 @@ An Android app for downloading photos and videos from Instagram, X (Twitter), an
 3. The page loads automatically after pasting
 4. Tap **Download All** to save
 
+### Douyin (抖音)
+
+#### Method 1: Share from Douyin
+
+1. Open a video in the Douyin app
+2. Tap **Share → Copy Link** or **Share to...** and select this app
+3. The video loads automatically
+4. Tap **Download All** to save
+
+#### Method 2: Paste a URL
+
+1. Open the app
+2. Paste a Douyin share link into the input bar (e.g. `https://v.douyin.com/iXxxxxx/`)
+3. The page loads automatically after pasting
+4. Tap **Download All** to save
+
 ### First-time login
 
 If you are not logged in, the app will show the platform's login page. Log in once — your session is saved and you won't need to log in again.
+
+> **Douyin note:** A guest session works for most public videos without logging in. Login is only required for private accounts.
 
 ### Downloaded files
 
@@ -72,6 +91,7 @@ Files are saved to:
 /storage/emulated/0/Download/Instagram/   ← Instagram
 /storage/emulated/0/Download/Twitter/     ← X (Twitter)
 /storage/emulated/0/Download/RedNote/     ← RedNote
+/storage/emulated/0/Download/Douyin/      ← Douyin
 ```
 
 ## Build
@@ -97,4 +117,4 @@ Push to `main` or `master` — the APK is built automatically and available unde
 
 - Android 7.0 (API 24) or higher
 - Internet connection
-- Instagram, X, and/or RedNote account
+- Accounts for platforms with private content (optional for Douyin)

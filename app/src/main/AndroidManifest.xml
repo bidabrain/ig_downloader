@@ -56,6 +56,15 @@
                 <data android:scheme="https" android:host="www.rednote.com" />
                 <data android:scheme="https" android:host="rednote.com" />
             </intent-filter>
+            <!-- Accept Douyin (抖音) share links -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="www.douyin.com" />
+                <data android:scheme="https" android:host="douyin.com" />
+                <data android:scheme="https" android:host="v.douyin.com" />
+            </intent-filter>
         </activity>
 
     </application>
