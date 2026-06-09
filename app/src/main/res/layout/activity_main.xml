@@ -1,112 +1,328 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:background="@color/background">
 
-    <!-- URL input bar -->
-    <LinearLayout
+    <!-- ── App Bar ─────────────────────────────────────────────────────────── -->
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="8dp"
-        android:background="@color/ig_pink">
+        android:background="@color/primary"
+        app:elevation="4dp">
 
-        <EditText
-            android:id="@+id/urlInput"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:hint="@string/url_hint"
-            android:inputType="textUri"
-            android:imeOptions="actionGo"
-            android:singleLine="true"
-            android:background="@android:color/white"
-            android:padding="10dp"
-            android:textSize="14sp"
-            android:textColor="@color/black"
-            android:textColorHint="#888888"
-            android:saveEnabled="false" />
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/primary"
+            app:title="Downloader"
+            app:titleTextColor="@color/on_primary"
+            app:titleTextAppearance="@style/TextAppearance.MaterialComponents.Headline6" />
+    </com.google.android.material.appbar.AppBarLayout>
 
-        <Button
-            android:id="@+id/loadBtn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/btn_load"
-            android:layout_marginStart="8dp"
-            android:backgroundTint="@color/ig_dark" />
+    <!-- ── Content Area (scroll cards + webview overlay) ─────────────────── -->
+    <FrameLayout
+        android:id="@+id/contentFrame"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <!-- Scrollable cards (visible when WebView is hidden) -->
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingBottom="88dp"
+            android:overScrollMode="never">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- ── URL Input Card ─────────────────────────────────────── -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="2dp"
+                    app:strokeWidth="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <!-- URL input field -->
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/urlInputLayout"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="@string/url_hint"
+                            app:boxCornerRadiusTopStart="12dp"
+                            app:boxCornerRadiusTopEnd="12dp"
+                            app:boxCornerRadiusBottomStart="12dp"
+                            app:boxCornerRadiusBottomEnd="12dp"
+                            app:boxStrokeColor="@color/primary"
+                            app:hintTextColor="@color/primary">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/urlInput"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textUri"
+                                android:imeOptions="actionGo"
+                                android:singleLine="true"
+                                android:textSize="14sp"
+                                android:textColor="@color/on_surface"
+                                android:saveEnabled="false" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- Hidden load button (triggered via keyboard Go / auto-detect) -->
+                        <Button
+                            android:id="@+id/loadBtn"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:visibility="gone" />
+
+                        <!-- Login + Browser buttons -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="12dp">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/loginBtn"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:layout_width="0dp"
+                                android:layout_height="48dp"
+                                android:layout_weight="1"
+                                android:text="Login"
+                                android:textSize="13sp"
+                                android:textColor="@color/primary"
+                                app:icon="@drawable/ic_person"
+                                app:iconTint="@color/primary"
+                                app:iconGravity="start"
+                                app:strokeColor="@color/primary"
+                                app:cornerRadius="12dp" />
+
+                            <Space
+                                android:layout_width="8dp"
+                                android:layout_height="wrap_content" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/browserBtn"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:layout_width="0dp"
+                                android:layout_height="48dp"
+                                android:layout_weight="1"
+                                android:text="Browser"
+                                android:textSize="13sp"
+                                android:textColor="@color/primary"
+                                app:icon="@drawable/ic_globe"
+                                app:iconTint="@color/primary"
+                                app:iconGravity="start"
+                                app:strokeColor="@color/primary"
+                                app:cornerRadius="12dp" />
+
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- ── Info / Status Card ─────────────────────────────────── -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/infoCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="2dp"
+                    app:strokeWidth="0dp">
+
+                    <!-- All states share this FrameLayout; only one is visible at a time -->
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="200dp">
+
+                        <!-- IDLE: hint text -->
+                        <LinearLayout
+                            android:id="@+id/emptyStateLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="32dp"
+                            android:minHeight="200dp"
+                            android:visibility="visible">
+
+                            <TextView
+                                android:id="@+id/statusText"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/empty_hint"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="14sp"
+                                android:gravity="center"
+                                android:lineSpacingMultiplier="1.4" />
+                        </LinearLayout>
+
+                        <!-- LOADING: circular spinner -->
+                        <LinearLayout
+                            android:id="@+id/loadingStateLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="32dp"
+                            android:minHeight="200dp"
+                            android:visibility="gone">
+
+                            <ProgressBar
+                                android:id="@+id/progressBar"
+                                style="?android:attr/progressBarStyle"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:indeterminate="true"
+                                android:layout_marginBottom="16dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="正在加载…"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="14sp" />
+                        </LinearLayout>
+
+                        <!-- MEDIA FOUND: platform badge + count -->
+                        <LinearLayout
+                            android:id="@+id/mediaFoundLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="20dp"
+                            android:minHeight="200dp"
+                            android:visibility="gone">
+
+                            <!-- Platform pill -->
+                            <TextView
+                                android:id="@+id/platformLabel"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:background="@drawable/bg_pill"
+                                android:paddingStart="14dp"
+                                android:paddingEnd="14dp"
+                                android:paddingTop="5dp"
+                                android:paddingBottom="5dp"
+                                android:textColor="@color/white"
+                                android:textSize="12sp"
+                                android:text="Instagram" />
+
+                            <!-- Count -->
+                            <TextView
+                                android:id="@+id/mediaCountLabel"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="16dp"
+                                android:text="1 个文件"
+                                android:textColor="@color/on_surface"
+                                android:textSize="28sp"
+                                android:textStyle="bold" />
+
+                            <!-- Type label -->
+                            <TextView
+                                android:id="@+id/mediaTypeLabel"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:text="视频 · 准备下载"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="14sp" />
+
+                        </LinearLayout>
+
+                        <!-- DOWNLOADING: progress bar + status -->
+                        <LinearLayout
+                            android:id="@+id/downloadingLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="20dp"
+                            android:minHeight="200dp"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:id="@+id/downloadStatusLabel"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="正在下载…"
+                                android:textColor="@color/on_surface"
+                                android:textSize="15sp"
+                                android:layout_marginBottom="16dp" />
+
+                            <ProgressBar
+                                android:id="@+id/downloadProgressBar"
+                                style="?android:attr/progressBarStyleHorizontal"
+                                android:layout_width="match_parent"
+                                android:layout_height="8dp"
+                                android:max="100"
+                                android:progressTint="@color/primary"
+                                android:progressBackgroundTint="@color/divider" />
+
+                        </LinearLayout>
+
+                    </FrameLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+
+        <!-- WebView (overlays scroll content when visible) -->
+        <WebView
+            android:id="@+id/webView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+    <!-- ── Download Button (fixed bottom bar) ────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/bottomBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:background="@color/surface"
+        android:elevation="8dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="16dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/downloadBtn"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="@string/btn_download"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/on_primary"
+            android:backgroundTint="@color/primary"
+            app:icon="@drawable/ic_download"
+            app:iconTint="@color/on_primary"
+            app:iconGravity="start"
+            app:iconPadding="8dp"
+            app:cornerRadius="14dp" />
+
     </LinearLayout>
 
-    <!-- Progress bar -->
-    <ProgressBar
-        android:id="@+id/progressBar"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="18dp"
-        android:max="100"
-        android:visibility="gone"
-        android:progressTint="@color/ig_pink"
-        android:progressBackgroundTint="#DDDDDD"
-        android:minHeight="18dp" />
-
-    <!-- Status text + browser toggle on same row -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:id="@+id/statusText"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:padding="6dp"
-            android:textSize="12sp"
-            android:text="Paste a URL above and tap Load" />
-
-        <Button
-            android:id="@+id/loginBtn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="4dp"
-            android:text="Login"
-            android:textSize="11sp"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:backgroundTint="@color/ig_pink"
-            android:textColor="@color/white" />
-
-        <Button
-            android:id="@+id/browserBtn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="6dp"
-            android:text="Browser"
-            android:textSize="11sp"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:backgroundTint="#DDDDDD"
-            android:textColor="@color/black" />
-    </LinearLayout>
-
-    <!-- WebView: hidden by default, toggle with the Browser button above -->
-    <WebView
-        android:id="@+id/webView"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:visibility="gone" />
-
-    <!-- Download button fixed at bottom -->
-    <Button
-        android:id="@+id/downloadBtn"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="8dp"
-        android:text="@string/btn_download"
-        android:backgroundTint="@color/ig_pink"
-        android:textColor="@color/white"
-        android:textSize="16sp" />
-
-</LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Insta Downloader</string>
-    <string name="url_hint">Paste Instagram, X, or RedNote URL…</string>
+    <string name="app_name">Downloader</string>
+    <string name="url_hint">粘贴链接…</string>
     <string name="btn_load">Load</string>
-    <string name="btn_download">Download</string>
+    <string name="btn_download">下载</string>
+    <string name="empty_hint">粘贴 Instagram、X、小红书或抖音链接\n即可自动识别并下载</string>
 </resources>

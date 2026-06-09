@@ -1,8 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#F1BADA</color>
+
+    <!-- Primary palette -->
+    <color name="primary">#4F46E5</color>
+    <color name="primary_dark">#3730A3</color>
+    <color name="on_primary">#FFFFFF</color>
+
+    <!-- Surface / background -->
+    <color name="background">#F1F5F9</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="on_surface">#0F172A</color>
+    <color name="text_secondary">#64748B</color>
+    <color name="divider">#E2E8F0</color>
+
+    <!-- Status colors -->
+    <color name="success">#10B981</color>
+    <color name="error_red">#EF4444</color>
+
+    <!-- Platform badge colors -->
     <color name="ig_pink">#E1306C</color>
     <color name="ig_dark">#833AB4</color>
+    <color name="rednote_red">#FF2442</color>
+    <color name="twitter_blue">#1D9BF0</color>
+    <color name="douyin_dark">#2A2A2A</color>
+
+    <!-- Legacy -->
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
 </resources>
