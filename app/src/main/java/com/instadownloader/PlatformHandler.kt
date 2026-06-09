@@ -29,6 +29,13 @@ interface HandlerContext {
     fun runOnUi(action: () -> Unit)
     /** Load a new URL in the WebView (must be called on the UI thread or via runOnUi). */
     fun navigateTo(url: String)
+    /**
+     * Load [url] in the WebView for display only — does NOT reset the download session or
+     * clear capturedMedia. Use this when you've already extracted media and just want the
+     * WebView to show a different page (e.g. navigate from the mobile share page to the
+     * desktop player for the same video).
+     */
+    fun navigateForDisplay(url: String)
     /** Temporarily override the WebView User-Agent string. Pass null to restore default. */
     fun setUserAgent(ua: String?)
 }
@@ -90,4 +97,12 @@ interface PlatformHandler {
 
     /** Optional: called when the JS bridge fires foundAppId(). Relevant for Instagram. */
     fun onFoundAppId(id: String) {}
+
+    /**
+     * Return the User-Agent string the WebView should use for this URL,
+     * or null to use the system default. Called from loadUrl() so the UA
+     * is set correctly before the WebView starts the request.
+     * Default: null (system default / mobile UA).
+     */
+    fun preferredUserAgent(url: String): String? = null
 }

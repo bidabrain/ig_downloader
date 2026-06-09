@@ -205,7 +205,12 @@ class MainActivity : AppCompatActivity() {
                 val scheme = request.url.scheme?.lowercase() ?: ""
                 if (scheme != "http" && scheme != "https") return true
                 if (request.method?.uppercase() == "GET") {
-                    view.loadUrl(request.url.toString(), EXTRA_HEADERS)
+                    val targetUrl = request.url.toString()
+                    // SPA JS navigations (window.location.replace / assign) to the same URL
+                    // would cause onInterceptRequestFull to re-fetch and re-serve the spoofed
+                    // HTML in an infinite loop. Consume the navigation without reloading.
+                    if (targetUrl == view.url) return true
+                    view.loadUrl(targetUrl, EXTRA_HEADERS)
                     return true
                 }
                 return false
@@ -296,6 +301,13 @@ class MainActivity : AppCompatActivity() {
         override fun runBackground(action: () -> Unit)   { Thread(action).start() }
         override fun runOnUi(action: () -> Unit)         { runOnUiThread(action) }
         override fun navigateTo(url: String)             { runOnUiThread { loadUrl(url) } }
+        override fun navigateForDisplay(url: String) {
+            runOnUiThread {
+                // Apply the handler's preferred UA for the destination (e.g. DESKTOP_UA for douyin.com)
+                webView.settings.userAgentString = currentHandler?.preferredUserAgent(url)
+                webView.loadUrl(url, EXTRA_HEADERS)
+            }
+        }
         override fun setUserAgent(ua: String?)           { runOnUiThread { webView.settings.userAgentString = ua } }
     }
 
@@ -320,10 +332,11 @@ class MainActivity : AppCompatActivity() {
             finalUrl = "https://$finalUrl"
         if (finalUrl.startsWith("http://"))
             finalUrl = finalUrl.replaceFirst("http://", "https://")
-        // Reset UA to default before each new navigation so a previous handler's
-        // custom UA (e.g. Douyin desktop UA) doesn't bleed into other platforms.
-        webView.settings.userAgentString = null
+        // Let the handler declare its preferred UA; fall back to system default (null).
+        // This replaces the blanket reset to null so Douyin's desktop UA survives
+        // into webView.loadUrl() and is visible to the SPA's network requests.
         currentHandler    = handlers.firstOrNull { it.matches(finalUrl) }
+        webView.settings.userAgentString = currentHandler?.preferredUserAgent(finalUrl)
         currentHandler?.onUrlCommitted(finalUrl)
         pendingUrl        = finalUrl
         downloadTriggered = false

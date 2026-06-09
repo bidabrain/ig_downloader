@@ -5,6 +5,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import com.instadownloader.HandlerContext
 import com.instadownloader.PlatformHandler
+import com.instadownloader.WEB_UA
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.net.HttpURLConnection
@@ -61,6 +62,8 @@ class DouyinHandler : PlatformHandler {
                     } catch(e) {}
                 };
                 def(navigator, 'platform',       'Win32');
+                def(navigator, 'userAgent',       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+                def(navigator, 'appVersion',      '5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
                 def(navigator, 'maxTouchPoints',  0);
                 def(navigator, 'vendor',          'Google Inc.');
                 def(navigator, 'webdriver',       false);
@@ -82,6 +85,12 @@ class DouyinHandler : PlatformHandler {
 
     override fun matches(url: String) = isDouyinUrl(url)
 
+    // Use desktop UA when loading www.douyin.com so the SPA's sub-resource requests
+    // (including aweme/detail) carry a desktop User-Agent header, and navigator.userAgent
+    // is already desktop-valued before the spoof script runs.
+    override fun preferredUserAgent(url: String): String? =
+        if (url.contains("www.douyin.com")) DESKTOP_UA else null
+
     // Reset the desktop-attempted flag whenever a fresh short link starts loading.
     override fun onUrlCommitted(url: String) {
         if (url.contains("v.douyin.com") || url.contains("iesdouyin.com")) {
@@ -99,26 +108,20 @@ class DouyinHandler : PlatformHandler {
         when {
             videoId != null && (url.contains("iesdouyin.com") || url.contains("m.douyin.com")) -> {
                 val isNote = url.contains("/share/note/") || url.contains("/note/")
-                if (isNote) {
-                    // 图文帖：iesdouyin.com 在加载时已经调用了 aweme/detail，
-                    // parseDetail 已经收集了图片。不要 navigateTo，否则 capturedMedia
-                    // 会被 loadUrl() 清空。给 API 额外时间完成（防止页面加载竞争）。
-                    Log.d("DouyinHandler", "note post — keeping iesdouyin.com, aweme/detail already proxied")
-                    ctx.postDelayed(500) {
-                        // 如果还没找到（API 比 onPageFinished 慢），再等一会儿。
-                        // 状态文本由 parseAndReport 里的 runOnUi 更新；这里仅兜底。
-                    }
-                } else if (!desktopAttempted) {
+                Log.d("DouyinHandler", "iesdouyin: videoId=$videoId isNote=$isNote desktopAttempted=$desktopAttempted")
+
+                // Primary extraction: read _ROUTER_DATA that the SSR page embeds.
+                // Works for both video posts (play_addr) and image/note posts (images array).
+                ctx.injectJs(routerDataJs)
+
+                if (!desktopAttempted && !isNote) {
                     desktopAttempted = true
-                    // 视频帖：切换到桌面 UA + 注入指纹伪造，让 SPA 调用 aweme/detail。
-                    Log.d("DouyinHandler", "→ desktop redirect for videoId=$videoId")
-                    ctx.setUserAgent(DESKTOP_UA)
-                    ctx.navigateTo("https://www.douyin.com/video/$videoId")
-                } else {
-                    // 桌面重定向失败 → 回退到自动播放捕获 CDN 地址。
-                    Log.d("DouyinHandler", "desktop redirect failed → auto-play fallback")
-                    ctx.postDelayed(1500) { ctx.injectJs(autoPlayJs) }
-                    ctx.postDelayed(4500) { ctx.injectJs(autoPlayJs) }
+                    // Give the JS 800 ms to report media, then switch the WebView to the
+                    // desktop player page — without clearing capturedMedia.
+                    ctx.postDelayed(800) {
+                        Log.d("DouyinHandler", "navigateForDisplay → www.douyin.com/video/$videoId")
+                        ctx.navigateForDisplay("https://www.douyin.com/video/$videoId")
+                    }
                 }
             }
             videoId != null && url.contains("www.douyin.com") -> {
@@ -161,11 +164,10 @@ class DouyinHandler : PlatformHandler {
             return
         }
 
-        // ── Capture image CDN URLs for 图文 (note/image-set) posts ─────────────────
-        if (url.contains("douyinpic.com") && url.contains("biz_tag=aweme_images")) {
-            Log.d("DouyinHandler", "CDN image captured url=${url.take(120)}")
-            ctx.reportMedia("image", url)
-        }
+        // NOTE: douyinpic.com CDN image interception was removed.
+        // It captured images from ALL posts visible on the page (recommended feed, etc.),
+        // not just the target post. Images are now extracted via aweme/detail API or
+        // RENDER_DATA parsing, which give us only the target post's images.
     }
 
     /**
@@ -183,11 +185,12 @@ class DouyinHandler : PlatformHandler {
         }
 
         // ── Mode B: proxy API calls ───────────────────────────────────────────────
-        val isPost   = url.contains("web/api/v2/aweme/post")
-        val isDetail = url.contains("aweme/v1/web/aweme/detail")
-        if (!isPost && !isDetail) return null
+        val isPost     = url.contains("web/api/v2/aweme/post")
+        val isDetail   = url.contains("aweme/v1/web/aweme/detail")
+        val isItemInfo = url.contains("web/api/v2/aweme/iteminfo")
+        if (!isPost && !isDetail && !isItemInfo) return null
         Log.d("DouyinHandler", "intercepting API url=$url")
-        return proxyApiRequest(request, url, isPost, ctx)
+        return proxyApiRequest(request, url, isPost, isItemInfo, ctx)
     }
 
     // ── Fingerprint-spoof HTML injection ─────────────────────────────────────────
@@ -269,7 +272,7 @@ class DouyinHandler : PlatformHandler {
     // ── API request proxy ─────────────────────────────────────────────────────
 
     private fun proxyApiRequest(
-        request: WebResourceRequest, url: String, isPost: Boolean, ctx: HandlerContext
+        request: WebResourceRequest, url: String, isPost: Boolean, isItemInfo: Boolean = false, ctx: HandlerContext
     ): WebResourceResponse? = try {
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.requestMethod  = "GET"
@@ -293,7 +296,11 @@ class DouyinHandler : PlatformHandler {
             Log.d("DouyinHandler", "proxy body len=${bytes.size} prefix=${String(bytes).take(200)}")
             try {
                 val json = JSONObject(String(bytes))
-                if (isPost) parsePostResponse(json, ctx) else parseAndReport(json, ctx)
+                when {
+                    isItemInfo -> parseItemInfoResponse(json, ctx)
+                    isPost     -> parsePostResponse(json, ctx)
+                    else       -> parseAndReport(json, ctx)
+                }
             } catch (e: Exception) {
                 Log.e("DouyinHandler", "parse exception", e)
             }
@@ -409,6 +416,68 @@ class DouyinHandler : PlatformHandler {
         }
     }
 
+    // ── iteminfo direct fetch ─────────────────────────────────────────────────
+    // Called proactively when we have a videoId from iesdouyin.com. This API returns
+    // the full aweme detail (including play URLs) for a specific item, unlike aweme/post
+    // which returns a user's post list and omits play URLs.
+    private fun tryItemInfoFetch(videoId: String, cookie: String, ctx: HandlerContext): Boolean {
+        val url = "https://www.iesdouyin.com/web/api/v2/aweme/iteminfo/?item_ids=$videoId"
+        Log.d("DouyinHandler", "tryItemInfoFetch videoId=$videoId cookie_len=${cookie.length}")
+        return try {
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.connectTimeout = 12_000
+            conn.readTimeout    = 12_000
+            conn.setRequestProperty("User-Agent",      WEB_UA)
+            conn.setRequestProperty("Referer",         "https://www.iesdouyin.com/")
+            conn.setRequestProperty("Accept",          "application/json, */*")
+            conn.setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9")
+            if (cookie.isNotBlank()) conn.setRequestProperty("Cookie", cookie)
+
+            val code = conn.responseCode
+            Log.d("DouyinHandler", "tryItemInfoFetch code=$code")
+            if (code != 200) return false
+
+            val body = conn.inputStream.bufferedReader().readText()
+            Log.d("DouyinHandler", "tryItemInfoFetch body len=${body.length} prefix=${body.take(200)}")
+            val json  = JSONObject(body)
+            val items = json.optJSONArray("item_list") ?: run {
+                Log.d("DouyinHandler", "tryItemInfoFetch: no item_list"); return false
+            }
+            if (items.length() == 0) { Log.d("DouyinHandler", "tryItemInfoFetch: empty item_list"); return false }
+
+            val item = items.getJSONObject(0)
+            val hasVideo = item.optJSONObject("video")?.let { v ->
+                (v.optJSONObject("play_addr")?.optJSONArray("url_list")?.length()     ?: 0) > 0 ||
+                (v.optJSONObject("download_addr")?.optJSONArray("url_list")?.length() ?: 0) > 0 ||
+                (v.optJSONArray("bit_rate")?.length()                                 ?: 0) > 0
+            } ?: false
+            val hasImages = (item.optJSONArray("images")?.length() ?: 0) > 0
+
+            Log.d("DouyinHandler", "tryItemInfoFetch hasVideo=$hasVideo hasImages=$hasImages")
+            if (!hasVideo && !hasImages) return false
+
+            parseDetail(item, ctx)
+            ctx.runOnUi { ctx.setStatus(if (hasImages) "找到 ${item.optJSONArray("images")!!.length()} 张图片，点击下载全部保存" else "找到视频，点击下载全部保存") }
+            true
+        } catch (e: Exception) {
+            Log.e("DouyinHandler", "tryItemInfoFetch exception", e)
+            false
+        }
+    }
+
+    private fun parseItemInfoResponse(data: JSONObject, ctx: HandlerContext) {
+        try {
+            val items = data.optJSONArray("item_list") ?: return
+            Log.d("DouyinHandler", "iteminfo items=${items.length()}")
+            if (items.length() == 0) return
+            parseDetail(items.getJSONObject(0), ctx)
+            ctx.runOnUi { ctx.setStatus("找到媒体，点击下载全部保存") }
+        } catch (e: Exception) {
+            Log.e("DouyinHandler", "parseItemInfoResponse exception", e)
+        }
+    }
+
     override fun buildDownloadHeaders(itemUrl: String, cookie: String?): Map<String, String> =
         mapOf(
             "User-Agent"      to DOUYIN_MOBILE_UA,
@@ -487,6 +556,65 @@ class DouyinHandler : PlatformHandler {
     }
 
     // ── JS snippets ───────────────────────────────────────────────────────────
+
+    /**
+     * Reads window._ROUTER_DATA embedded by iesdouyin.com's SSR and reports
+     * all media URLs via AndroidBridge.foundMedia().
+     *
+     * _ROUTER_DATA.loaderData["video_(id)/page"].videoInfoRes.item_list[0]:
+     *   - images[]          → image/note post (url_list per image)
+     *   - video.bit_rate[]  → video (highest quality play URL)
+     *   - video.play_addr   → video fallback
+     */
+    private val routerDataJs = """
+        (function() {
+            try {
+                var d = window._ROUTER_DATA;
+                if (!d || !d.loaderData) return;
+                var ld = d.loaderData;
+                var pageData = null;
+                var keys = ['video_(id)/page','note_(id)/page','slides_(id)/page','jx-video_(id)/page'];
+                for (var ki = 0; ki < keys.length; ki++) {
+                    var pg = ld[keys[ki]];
+                    if (pg && pg.videoInfoRes) { pageData = pg; break; }
+                }
+                if (!pageData) return;
+                var items = pageData.videoInfoRes.item_list;
+                if (!items || items.length === 0) return;
+                var item = items[0];
+                // Image / note post
+                var images = item.images;
+                if (images && images.length > 0) {
+                    for (var ii = 0; ii < images.length; ii++) {
+                        var ul = images[ii].url_list;
+                        if (ul && ul.length > 0)
+                            AndroidBridge.foundMedia('image', ul[ul.length - 1]);
+                    }
+                    return;
+                }
+                // Video post
+                var video = item.video;
+                if (!video) return;
+                var brs = video.bit_rate;
+                if (brs && brs.length > 0) {
+                    var best = null, bestR = -1;
+                    for (var bi = 0; bi < brs.length; bi++) {
+                        if ((brs[bi].bit_rate || 0) > bestR) {
+                            bestR = brs[bi].bit_rate || 0; best = brs[bi];
+                        }
+                    }
+                    if (best) {
+                        var u = best.play_addr && best.play_addr.url_list && best.play_addr.url_list[0];
+                        if (u) { AndroidBridge.foundMedia('video', u); return; }
+                    }
+                }
+                var pu = video.play_addr && video.play_addr.url_list && video.play_addr.url_list[0];
+                if (pu) { AndroidBridge.foundMedia('video', pu); return; }
+                var du = video.download_addr && video.download_addr.url_list && video.download_addr.url_list[0];
+                if (du) AndroidBridge.foundMedia('video', du);
+            } catch(e) {}
+        })();
+    """.trimIndent()
 
     private val autoPlayJs = """
         (function() {
