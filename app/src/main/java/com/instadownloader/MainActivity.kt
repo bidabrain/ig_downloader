@@ -755,9 +755,20 @@ class MainActivity : AppCompatActivity() {
     // ── RedNote media extractor ───────────────────────────────────────────────
 
     /**
-     * Read note data from RedNote's Vue __INITIAL_STATE__ (same approach as the
-     * XHS-Downloader userscript), transform thumbnail CDN URLs into full-quality
-     * ci.xiaohongshu.com URLs, and report them via AndroidBridge.foundMedia().
+     * Extract media from RedNote's __INITIAL_STATE__, ported from XHS-Downloader.
+     *
+     * Note object paths (mirroring XHS-Downloader's Converter.py):
+     *   Phone: noteData.data.noteData
+     *   PC:    note.noteDetailMap[<url-id>].note  (fallback: last entry)
+     *
+     * Video strategy (mirroring XHS-Downloader's video.py):
+     *   1. video.consumer.originVideoKey → direct MP4 on sns-video-bd.xhscdn.com
+     *   2. Collect h264 + h265 streams, sort by height, pick highest quality.
+     *      Prefer backupUrls[0] (direct MP4) over masterUrl (may be .m3u8 HLS).
+     *
+     * Image strategy (mirroring XHS-Downloader's image.py):
+     *   Extract token via url.split('/').slice(5).join('/').split('!')[0]
+     *   and reconstruct as ci.xiaohongshu.com/{token}?imageView2/format/jpeg
      */
     private fun injectRedNoteMediaFinder() {
         val js = """
@@ -765,15 +776,16 @@ class MainActivity : AppCompatActivity() {
                 var state = window.__INITIAL_STATE__;
                 if (!state) return;
 
-                // Try to find the note object — it lives in different locations
-                // depending on whether this is a direct note URL or an explore URL.
                 var note = null;
+
+                // Path 1: phone layout — noteData.data.noteData
                 try {
                     if (state.noteData && state.noteData.data && state.noteData.data.noteData) {
                         note = state.noteData.data.noteData;
                     }
                 } catch(e) {}
 
+                // Path 2: PC layout — note.noteDetailMap[<url-id>].note
                 if (!note) {
                     try {
                         var m = location.pathname.match(/\/explore\/([^?\/]+)/);
@@ -785,10 +797,23 @@ class MainActivity : AppCompatActivity() {
                     } catch(e) {}
                 }
 
+                // Path 3: PC layout fallback — last entry in noteDetailMap
+                if (!note) {
+                    try {
+                        if (state.note && state.note.noteDetailMap) {
+                            var keys = Object.keys(state.note.noteDetailMap);
+                            if (keys.length > 0) {
+                                var last = state.note.noteDetailMap[keys[keys.length - 1]];
+                                if (last) note = last.note || last;
+                            }
+                        }
+                    } catch(e) {}
+                }
+
                 if (!note) return;
 
                 if (note.type === 'video') {
-                    // Prefer originVideoKey (direct CDN path), fall back to h265 stream
+                    // Strategy 1: originVideoKey — direct MP4, most reliable
                     try {
                         var key = note.video && note.video.consumer && note.video.consumer.originVideoKey;
                         if (key) {
@@ -796,28 +821,45 @@ class MainActivity : AppCompatActivity() {
                             return;
                         }
                     } catch(e) {}
+
+                    // Strategy 2: collect h264 + h265 streams, pick highest-resolution direct MP4
+                    var allStreams = [];
                     try {
-                        var streams = note.video.media.stream.h265;
-                        AndroidBridge.foundMedia('video', streams[streams.length - 1].masterUrl);
+                        var h264 = note.video.media.stream.h264;
+                        if (Array.isArray(h264)) allStreams = allStreams.concat(h264);
                     } catch(e) {}
+                    try {
+                        var h265 = note.video.media.stream.h265;
+                        if (Array.isArray(h265)) allStreams = allStreams.concat(h265);
+                    } catch(e) {}
+
+                    if (allStreams.length > 0) {
+                        allStreams.sort(function(a, b) { return (a.height || 0) - (b.height || 0); });
+                        var best = allStreams[allStreams.length - 1];
+                        // backupUrls[0] is a direct MP4; masterUrl may be .m3u8 HLS
+                        var videoUrl = null;
+                        if (best.backupUrls && best.backupUrls.length > 0 &&
+                                best.backupUrls[0].indexOf('.m3u8') < 0) {
+                            videoUrl = best.backupUrls[0];
+                        } else if (best.masterUrl && best.masterUrl.indexOf('.m3u8') < 0) {
+                            videoUrl = best.masterUrl;
+                        }
+                        if (videoUrl) AndroidBridge.foundMedia('video', videoUrl);
+                    }
                 } else {
-                    // Image post: each thumbnail URL encodes the full-quality image ID
-                    // between the CDN path prefix and the trailing '!'.
-                    // URL format: https://{cdn}.xhscdn.com/{ts}/{hash}/{imageId}!{quality}
-                    // We extract {imageId} and reconstruct a ci.xiaohongshu.com download URL.
-                    //
-                    // Use [^!]+ instead of \S+ to stop at the first '!' — \S is greedy and
-                    // includes '!' itself, which causes incorrect backtracking on complex IDs.
-                    // The pattern covers all xhscdn.com and rednotecdn.com CDN subdomains.
+                    // Image post
+                    // Token extraction mirrors XHS-Downloader image.py:
+                    //   "/".join(url.split("/")[5:]).split("!")[0]
+                    // Works for any CDN domain and handles multi-segment tokens.
                     var images = note.imageList;
                     if (!images || !images.length) return;
-                    var cdnRegex = /https?:\/\/[a-z0-9.-]+(?:xhscdn|rednotecdn)\.com\/\d+\/[0-9a-z]+\/([^!]+)!/;
                     images.forEach(function(item) {
                         var url = item.urlDefault || item.url || '';
-                        var match = url.match(cdnRegex);
-                        if (match && match[1]) {
+                        if (!url) return;
+                        var token = url.split('/').slice(5).join('/').split('!')[0];
+                        if (token) {
                             AndroidBridge.foundMedia('image',
-                                'https://ci.xiaohongshu.com/' + match[1] + '?imageView2/format/jpeg');
+                                'https://ci.xiaohongshu.com/' + token + '?imageView2/format/jpeg');
                         }
                     });
                 }
