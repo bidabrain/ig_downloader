@@ -363,18 +363,20 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // Only used for Instagram non-post pages (stories etc.)
             override fun shouldInterceptRequest(
                 view: WebView,
                 request: WebResourceRequest
             ): WebResourceResponse? {
                 if (!activeDownloadSession) return null
-                // CDN interception is only used for Instagram non-post pages;
-                // RedNote media is extracted via __INITIAL_STATE__ JS injection instead.
-                if (currentPlatform != "instagram") return null
-                val currentUrl = pendingUrl ?: ""
-                if (shortcodeFrom(currentUrl) == null) {
-                    captureFromUrl(request.url.toString())
+                when (currentPlatform) {
+                    "rednote" -> captureRedNoteMedia(request.url.toString())
+                    "instagram" -> {
+                        // CDN interception for non-post pages (stories etc.)
+                        val currentUrl = pendingUrl ?: ""
+                        if (shortcodeFrom(currentUrl) == null) {
+                            captureFromUrl(request.url.toString())
+                        }
+                    }
                 }
                 return null
             }
@@ -850,6 +852,17 @@ class MainActivity : AppCompatActivity() {
                         }
                         if (videoUrl) AndroidBridge.foundMedia('video', videoUrl);
                     }
+
+                    // Strategy 3: DOM fallback — read <video> element src directly
+                    document.querySelectorAll('video').forEach(function(v) {
+                        var src = v.currentSrc || v.src || '';
+                        if (src && src.indexOf('blob:') < 0 && src.indexOf('data:') < 0 && src.length > 10)
+                            AndroidBridge.foundMedia('video', src);
+                        v.querySelectorAll('source').forEach(function(s) {
+                            if (s.src && s.src.indexOf('blob:') < 0)
+                                AndroidBridge.foundMedia('video', s.src);
+                        });
+                    });
                 } else {
                     // Image post
                     // Token extraction mirrors XHS-Downloader image.py:
@@ -870,6 +883,28 @@ class MainActivity : AppCompatActivity() {
             })();
         """.trimIndent()
         webView.evaluateJavascript(js, null)
+    }
+
+    // ── RedNote CDN capture (network interception) ───────────────────────────
+
+    /**
+     * Called from shouldInterceptRequest for every RedNote resource request.
+     * Captures direct MP4 URLs from RedNote's video CDN (sns-video-*.xhscdn.com).
+     * Skips HLS manifests (.m3u8) and TS segments — those are unplayable as saved files.
+     */
+    private fun captureRedNoteMedia(url: String) {
+        if (!activeDownloadSession) return
+        // Only video CDN subdomains (sns-video-bd, sns-video-hw, etc.)
+        if (!url.contains("xhscdn.com")) return
+        if (!url.contains("sns-video")) return
+        // Skip HLS manifest and segments
+        if (url.contains(".m3u8") || url.contains(".ts?") || url.contains("/ts/")) return
+        runOnUiThread {
+            if (!capturedMedia.containsKey(url)) {
+                capturedMedia[url] = MediaItem("video", url, buildFilename(url, "video"), "rednote")
+                updateDownloadButton()
+            }
+        }
     }
 
     // ── Instagram page scan (fallback / non-post pages) ───────────────────────
