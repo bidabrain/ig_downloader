@@ -13,19 +13,12 @@ private const val DOUYIN_MOBILE_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 li
 /**
  * Handles 抖音 (Douyin) video and image-set downloads.
  *
- * Extraction strategy (two layers):
- *
- * Primary — network interception via onInterceptRequest:
- *   shouldInterceptRequest fires at the network level when the page JS calls
- *   aweme/v1/web/aweme/detail. We make a parallel HTTP request with the same URL
- *   (which already contains all auth tokens as query params) plus WebView cookies,
- *   parse the JSON, and report media. This works regardless of when onPageFinished
- *   fires relative to the API call.
- *
- * Fallback — JS fetch() hook via onPageFinished:
- *   For cases where the network interception misses (e.g. SPA in-page navigation),
- *   we install a fetch() wrapper that catches any subsequent aweme/detail calls.
- *   The guard flag is reset on each new load so the hook is always fresh.
+ * Strategy (mirrors InstagramHandler / TwitterHandler pattern):
+ *   onPageFinished sees the final URL (e.g. douyin.com/video/7293...) after the
+ *   short-link redirect has already been followed by the WebView. We extract the
+ *   numeric ID and call aweme/detail ourselves with the WebView's cookies.
+ *   No JS hook or shouldInterceptRequest needed — the API works with valid session
+ *   cookies (ttwid, __ac_signature, s_v_web_id) even without X-Bogus.
  */
 class DouyinHandler : PlatformHandler {
 
@@ -37,48 +30,30 @@ class DouyinHandler : PlatformHandler {
     companion object {
         fun isDouyinUrl(url: String) =
             url.contains("douyin.com") || url.contains("v.douyin.com")
+
+        /** Extract numeric ID from douyin.com/video/ID or douyin.com/note/ID. */
+        fun videoIdFrom(url: String): String? =
+            Regex("""douyin\.com/(?:video|note)/(\d+)""").find(url)?.groupValues?.get(1)
     }
 
     override fun matches(url: String) = isDouyinUrl(url)
 
-    // Reset the JS hook guard whenever a new URL is committed so the hook is
-    // always freshly installed on the next onPageFinished.
-    override fun onUrlCommitted(url: String) { }
-
     override fun onPageFinished(url: String, ctx: HandlerContext) {
         ctx.setStatus("正在提取抖音视频…")
-        // Reset guard then re-install hook — covers SPA in-page navigations that
-        // the network interceptor might miss on subsequent video views.
+
+        val videoId = videoIdFrom(url)
+        if (videoId != null) {
+            // Primary path: call API directly with the video ID we extracted from the URL.
+            ctx.runBackground { fetchByVideoId(videoId, ctx) }
+        }
+        // Secondary fallback: JS fetch() hook catches aweme/detail on SPA in-page navigation
+        // (e.g. user taps another video without a full page reload).
         ctx.injectJs("window.__douyinHooked = false;")
         ctx.injectJs(fetchHookJs)
     }
 
-    /**
-     * Primary extraction path. Called from shouldInterceptRequest (background thread).
-     * Detects the aweme/detail API URL, fires a parallel HTTP request with the
-     * same URL + WebView cookies, and reports media directly from the JSON response.
-     * Returns immediately so the WebView's own request is not blocked.
-     */
     override fun onInterceptRequest(url: String, ctx: HandlerContext) {
-        if (!url.contains("aweme/v1/web/aweme/detail")) return
-        Thread {
-            try {
-                val cookie = ctx.getCookie("https://www.douyin.com") ?: ""
-                val conn = URL(url).openConnection() as HttpURLConnection
-                conn.requestMethod  = "GET"
-                conn.connectTimeout = 10_000
-                conn.readTimeout    = 15_000
-                conn.setRequestProperty("User-Agent",     WEB_UA)
-                conn.setRequestProperty("Cookie",         cookie)
-                conn.setRequestProperty("Referer",        "https://www.douyin.com/")
-                conn.setRequestProperty("Accept",         "application/json, */*")
-                conn.setRequestProperty("Accept-Language","zh-CN,zh;q=0.9")
-                if (conn.responseCode == 200) {
-                    val json = JSONObject(conn.inputStream.bufferedReader().readText())
-                    parseAndReport(json, ctx)
-                }
-            } catch (_: Exception) {}
-        }.start()
+        // Not used — extraction is driven by onPageFinished + direct API call.
     }
 
     override fun buildDownloadHeaders(itemUrl: String, cookie: String?): Map<String, String> =
@@ -89,7 +64,41 @@ class DouyinHandler : PlatformHandler {
             "Accept-Language" to "zh-CN,zh;q=0.9"
         )
 
-    // ── Response parsing ──────────────────────────────────────────────────────
+    // ── Direct API call ───────────────────────────────────────────────────────
+
+    private fun fetchByVideoId(videoId: String, ctx: HandlerContext) {
+        try {
+            val cookie = ctx.getCookie("https://www.douyin.com") ?: ""
+            // Basic params sufficient for the API with valid session cookies.
+            // X-Bogus is omitted — the endpoint accepts requests without it when
+            // the cookie contains a valid ttwid / __ac_signature.
+            val apiUrl = "https://www.douyin.com/aweme/v1/web/aweme/detail/" +
+                "?device_platform=webapp&aid=6383&channel=channel_pc_web" +
+                "&aweme_id=$videoId" +
+                "&pc_client_type=1&version_code=190500&version_name=19.5.0" +
+                "&cookie_enabled=true&screen_width=1280&screen_height=720" +
+                "&browser_language=zh-CN&browser_platform=Win32" +
+                "&browser_name=Chrome&browser_version=120.0.0.0" +
+                "&browser_online=true&engine_name=Blink&engine_version=120.0.0.0" +
+                "&os_name=Windows&os_version=10&cpu_core_num=8&device_memory=8" +
+                "&platform=PC&downlink=10&effective_type=4g&round_trip_time=100"
+
+            val conn = URL(apiUrl).openConnection() as HttpURLConnection
+            conn.requestMethod  = "GET"
+            conn.connectTimeout = 10_000
+            conn.readTimeout    = 15_000
+            conn.setRequestProperty("User-Agent",      WEB_UA)
+            conn.setRequestProperty("Cookie",          cookie)
+            conn.setRequestProperty("Referer",         "https://www.douyin.com/video/$videoId")
+            conn.setRequestProperty("Accept",          "application/json, */*")
+            conn.setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9")
+
+            if (conn.responseCode == 200) {
+                val json = JSONObject(conn.inputStream.bufferedReader().readText())
+                parseAndReport(json, ctx)
+            }
+        } catch (_: Exception) {}
+    }
 
     private fun parseAndReport(data: JSONObject, ctx: HandlerContext) {
         try {
@@ -108,7 +117,11 @@ class DouyinHandler : PlatformHandler {
                 for (i in 0 until bitRates.length()) {
                     val item = bitRates.getJSONObject(i)
                     val rate = item.getInt("bit_rate")
-                    if (rate > bestRate) { bestRate = rate; bestUrl = item.getJSONObject("play_addr").getJSONArray("url_list").getString(0) }
+                    if (rate > bestRate) {
+                        bestRate = rate
+                        bestUrl = item.getJSONObject("play_addr")
+                            .getJSONArray("url_list").getString(0)
+                    }
                 }
                 if (bestUrl.isNotEmpty()) ctx.reportMedia("video", bestUrl)
             }
