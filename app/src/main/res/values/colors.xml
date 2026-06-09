@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="ic_launcher_background">#F1BADA</color>
     <color name="ig_pink">#E1306C</color>
     <color name="ig_dark">#833AB4</color>
     <color name="white">#FFFFFF</color>
