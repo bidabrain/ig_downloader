@@ -259,6 +259,10 @@ class MainActivity : AppCompatActivity() {
                 view: WebView,
                 request: WebResourceRequest
             ): Boolean {
+                val scheme = request.url.scheme?.lowercase() ?: ""
+                // Block non-http(s) schemes (e.g. xhslink://, snssdk://, intent://)
+                // to prevent ERR_UNKNOWN_URL_SCHEME from RedNote's in-page app links.
+                if (scheme != "http" && scheme != "https") return true
                 if (request.method?.uppercase() == "GET") {
                     view.loadUrl(request.url.toString(), EXTRA_HEADERS)
                     return true
