@@ -14,6 +14,8 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.webkit.*
@@ -145,6 +147,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         toolbar                = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
         webView                = findViewById(R.id.webView)
         urlInput               = findViewById(R.id.urlInput)
         loadBtn                = findViewById(R.id.loadBtn)
@@ -171,14 +174,14 @@ class MainActivity : AppCompatActivity() {
         loadBtn.setOnClickListener {
             val url = urlInput.text.toString().trim()
             if (url.isNotEmpty()) loadUrl(url)
-            else Toast.makeText(this, "Enter a URL first", Toast.LENGTH_SHORT).show()
+            else Toast.makeText(this, getString(R.string.toast_enter_url), Toast.LENGTH_SHORT).show()
         }
 
         urlInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_GO) {
                 val url = urlInput.text.toString().trim()
                 if (url.isNotEmpty()) loadUrl(url)
-                else Toast.makeText(this, "Enter a URL first", Toast.LENGTH_SHORT).show()
+                else Toast.makeText(this, getString(R.string.toast_enter_url), Toast.LENGTH_SHORT).show()
                 true
             } else false
         }
@@ -215,6 +218,19 @@ class MainActivity : AppCompatActivity() {
                 Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
             if (!fromHistory) intent?.let { handleIntent(it) }
         }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_main, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == R.id.action_support) {
+            startActivity(Intent(this, SupportActivity::class.java))
+            return true
+        }
+        return super.onOptionsItemSelected(item)
     }
 
     override fun onResume() {
@@ -284,12 +300,12 @@ class MainActivity : AppCompatActivity() {
                 when {
                     isLoginPage(url) -> {
                         justLoggedIn = true
-                        statusText.text = "登录后返回即可继续下载"
+                        statusText.text = getString(R.string.status_login_prompt)
                         setInfoState(INFO_IDLE)
                     }
                     isAfterLogin(url) -> {
                         justLoggedIn = false
-                        statusText.text = "已登录，正在加载链接…"
+                        statusText.text = getString(R.string.status_after_login)
                         setInfoState(INFO_LOADING)
                         pendingUrl?.let { pu ->
                             downloadTriggered = false
@@ -313,14 +329,14 @@ class MainActivity : AppCompatActivity() {
 
             override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse) {
                 if (request.isForMainFrame) {
-                    statusText.text = "HTTP ${errorResponse.statusCode} — 请重试"
+                    statusText.text = getString(R.string.status_http_error, errorResponse.statusCode)
                     setInfoState(INFO_IDLE)
                 }
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                 if (request.isForMainFrame) {
-                    statusText.text = "错误：${error.description}"
+                    statusText.text = getString(R.string.status_error, error.description)
                     setInfoState(INFO_IDLE)
                 }
             }
@@ -378,7 +394,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showBrowser(visible: Boolean) {
         webView.visibility = if (visible) View.VISIBLE else View.GONE
-        browserBtn.text    = if (visible) "Hide Browser" else "Browser"
+        browserBtn.text    = if (visible) getString(R.string.btn_browser_hide) else getString(R.string.btn_browser)
         if (visible) {
             toolbar.setNavigationIcon(R.drawable.ic_arrow_back)
             toolbar.setNavigationOnClickListener { showBrowser(false) }
@@ -407,9 +423,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun platformNameFor(source: String): String = when (source) {
         "instagram" -> "Instagram"
-        "rednote"   -> "小红书"
-        "twitter"   -> "X / Twitter"
-        "douyin"    -> "抖音"
+        "rednote"   -> getString(R.string.platform_rednote)
+        "twitter"   -> getString(R.string.platform_twitter)
+        "douyin"    -> getString(R.string.platform_douyin)
         else        -> source.replaceFirstChar { it.uppercase() }
     }
 
@@ -463,15 +479,15 @@ class MainActivity : AppCompatActivity() {
             .maxByOrNull { it.value }?.key ?: "unknown"
         val types = capturedMedia.values.map { it.type }.distinct()
         val typeText = when {
-            "video" in types && "image" in types -> "视频+图片"
-            "video" in types                     -> "视频"
-            else                                 -> "图片"
+            "video" in types && "image" in types -> getString(R.string.media_type_mixed)
+            "video" in types                     -> getString(R.string.media_type_video)
+            else                                 -> getString(R.string.media_type_image)
         }
 
         val color = platformColorFor(source)
         (platformLabel.background.mutate() as? GradientDrawable)?.setColor(color)
         platformLabel.text  = platformNameFor(source)
-        mediaCountLabel.text = "$n 个文件"
+        mediaCountLabel.text = getString(R.string.media_count, n)
         mediaTypeLabel.text  = typeText
 
         if (currentInfoState != INFO_DOWNLOADING) setInfoState(INFO_READY)
@@ -504,7 +520,7 @@ class MainActivity : AppCompatActivity() {
         filename.text = item.filename
         (platform.background.mutate() as? GradientDrawable)?.setColor(color)
         platform.text = platformNameFor(item.source)
-        type.text     = if (item.type == "video") "视频" else "图片"
+        type.text     = if (item.type == "video") getString(R.string.media_type_video) else getString(R.string.media_type_image)
 
         mediaListContainer.addView(row)
         downloadItemViews.add(ItemViewHolder(spinner, icon))
@@ -514,7 +530,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun downloadAll() {
         if (capturedMedia.isEmpty()) {
-            statusText.text = "未找到媒体 — 请确认已登录"
+            statusText.text = getString(R.string.status_no_media)
             setInfoState(INFO_IDLE)
             return
         }
@@ -555,7 +571,7 @@ class MainActivity : AppCompatActivity() {
                     downloadFileInApp(item) { pct ->
                         runOnUiThread {
                             downloadProgressBar.progress = (index * 100 + pct) / total
-                            downloadStatusLabel.text = "下载中 $num/$total ($pct%)"
+                            downloadStatusLabel.text = getString(R.string.status_downloading_progress, num, total, pct)
                         }
                     }
                     succeeded++
@@ -565,16 +581,16 @@ class MainActivity : AppCompatActivity() {
                 } catch (e: Exception) {
                     runOnUiThread {
                         downloadItemViews.getOrNull(index)?.setStatus(ItemStatus.ERROR)
-                        downloadStatusLabel.text = "第 $num 个失败：${e.message}"
+                        downloadStatusLabel.text = getString(R.string.status_item_failed, num, e.message)
                     }
                 }
             }
             runOnUiThread {
                 downloadBtn.isEnabled = true
                 statusText.text = if (succeeded == total)
-                    "下载完成，共 $total 个文件，保存至 下载/$folderName/"
+                    getString(R.string.status_download_complete, total, folderName)
                 else
-                    "完成：$succeeded/$total 成功"
+                    getString(R.string.status_download_partial, succeeded, total)
                 // Keep list visible on completion; return to idle only clears on next loadUrl
                 setInfoState(INFO_READY)
             }
@@ -656,7 +672,7 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQ_WRITE_STORAGE &&
             grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
-            statusText.text = "权限已获取，请再次点击下载"
+            statusText.text = getString(R.string.status_permission_granted)
     }
 
     private fun buildFilename(url: String, type: String): String {
@@ -682,7 +698,7 @@ class MainActivity : AppCompatActivity() {
             super.onBackPressed()
         } else {
             backPressedTime = now
-            Toast.makeText(this, "再按一次退出", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.toast_back_exit), Toast.LENGTH_SHORT).show()
         }
     }
 }

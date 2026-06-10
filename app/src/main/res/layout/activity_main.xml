@@ -19,7 +19,7 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="@color/primary"
-            app:title="Downloader"
+            app:title="@string/app_name"
             app:titleTextColor="@color/on_primary"
             app:titleTextAppearance="@style/TextAppearance.MaterialComponents.Headline6"
             app:navigationIconTint="@color/on_primary" />
@@ -105,7 +105,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="48dp"
                                 android:layout_weight="1"
-                                android:text="Login"
+                                android:text="@string/btn_login"
                                 android:textSize="13sp"
                                 android:textColor="@color/primary"
                                 app:icon="@drawable/ic_person"
@@ -124,7 +124,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="48dp"
                                 android:layout_weight="1"
-                                android:text="Browser"
+                                android:text="@string/btn_browser"
                                 android:textSize="13sp"
                                 android:textColor="@color/primary"
                                 app:icon="@drawable/ic_globe"
@@ -196,7 +196,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="正在加载…"
+                                android:text="@string/status_loading"
                                 android:textColor="@color/text_secondary"
                                 android:textSize="14sp" />
                         </LinearLayout>

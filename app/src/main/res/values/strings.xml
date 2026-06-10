@@ -1,8 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Downloader</string>
-    <string name="url_hint">粘贴链接…</string>
+
+    <!-- Input card -->
+    <string name="url_hint">Paste a link…</string>
     <string name="btn_load">Load</string>
-    <string name="btn_download">下载</string>
-    <string name="empty_hint">粘贴 Instagram、X、小红书或抖音链接\n即可自动识别并下载</string>
+    <string name="btn_download">Download</string>
+    <string name="btn_login">Login</string>
+    <string name="btn_browser">Browser</string>
+    <string name="btn_browser_hide">Hide Browser</string>
+    <string name="empty_hint">Paste an Instagram, X, RedNote or Douyin link\nto auto-detect and download</string>
+
+    <!-- Status messages -->
+    <string name="status_loading">Loading…</string>
+    <string name="status_login_prompt">Return after login to continue downloading</string>
+    <string name="status_after_login">Logged in, loading link…</string>
+    <string name="status_http_error">HTTP %d — please retry</string>
+    <string name="status_error">Error: %s</string>
+    <string name="status_no_media">No media found — make sure you\'re logged in</string>
+    <string name="status_downloading_progress">Downloading %1$d/%2$d (%3$d%%)</string>
+    <string name="status_item_failed">Item %1$d failed: %2$s</string>
+    <string name="status_download_complete">Done, %1$d files saved to Downloads/%2$s/</string>
+    <string name="status_download_partial">Done: %1$d/%2$d succeeded</string>
+    <string name="status_permission_granted">Permission granted, tap download again</string>
+
+    <!-- Toasts -->
+    <string name="toast_enter_url">Enter a URL first</string>
+    <string name="toast_back_exit">Press again to exit</string>
+
+    <!-- Media info -->
+    <string name="media_count">%d files</string>
+    <string name="media_type_video">Video</string>
+    <string name="media_type_image">Image</string>
+    <string name="media_type_mixed">Video+Image</string>
+
+    <!-- Platform names -->
+    <string name="platform_rednote">RedNote</string>
+    <string name="platform_twitter">X / Twitter</string>
+    <string name="platform_douyin">Douyin</string>
+
+    <!-- Support / donation page -->
+    <string name="support_title">Support Developer</string>
+    <string name="support_heading">Thank you for your support!</string>
+    <string name="support_desc">This app is completely free with no ads.\nIf it helped you, buy me a coffee ☕</string>
+    <string name="support_wechat_label">WeChat Pay</string>
+    <string name="btn_save_qr">Save QR Code to Gallery</string>
+    <string name="support_footer">Your support keeps me going ❤️</string>
+    <string name="qr_content_description">Donation QR code</string>
+    <string name="toast_qr_read_error">Cannot read QR code image</string>
+    <string name="toast_qr_saved">QR code saved to gallery</string>
+    <string name="toast_qr_save_failed">Save failed: %s</string>
 </resources>

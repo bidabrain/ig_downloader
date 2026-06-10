@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">下载器</string>
+
+    <!-- Input card -->
+    <string name="url_hint">粘贴链接…</string>
+    <string name="btn_load">加载</string>
+    <string name="btn_download">下载</string>
+    <string name="btn_login">登录</string>
+    <string name="btn_browser">浏览器</string>
+    <string name="btn_browser_hide">隐藏浏览器</string>
+    <string name="empty_hint">粘贴 Instagram、X、小红书或抖音链接\n即可自动识别并下载</string>
+
+    <!-- Status messages -->
+    <string name="status_loading">正在加载…</string>
+    <string name="status_login_prompt">登录后返回即可继续下载</string>
+    <string name="status_after_login">已登录，正在加载链接…</string>
+    <string name="status_http_error">HTTP %d — 请重试</string>
+    <string name="status_error">错误：%s</string>
+    <string name="status_no_media">未找到媒体 — 请确认已登录</string>
+    <string name="status_downloading_progress">下载中 %1$d/%2$d (%3$d%%)</string>
+    <string name="status_item_failed">第 %1$d 个失败：%2$s</string>
+    <string name="status_download_complete">下载完成，共 %1$d 个文件，保存至 下载/%2$s/</string>
+    <string name="status_download_partial">完成：%1$d/%2$d 成功</string>
+    <string name="status_permission_granted">权限已获取，请再次点击下载</string>
+
+    <!-- Toasts -->
+    <string name="toast_enter_url">请先输入链接</string>
+    <string name="toast_back_exit">再按一次退出</string>
+
+    <!-- Media info -->
+    <string name="media_count">%d 个文件</string>
+    <string name="media_type_video">视频</string>
+    <string name="media_type_image">图片</string>
+    <string name="media_type_mixed">视频+图片</string>
+
+    <!-- Platform names -->
+    <string name="platform_rednote">小红书</string>
+    <string name="platform_twitter">X / Twitter</string>
+    <string name="platform_douyin">抖音</string>
+
+    <!-- Support / donation page -->
+    <string name="support_title">支持开发者</string>
+    <string name="support_heading">感谢你的支持！</string>
+    <string name="support_desc">这款 App 完全免费，没有广告。\n如果它帮到了你，请用微信扫码请我喝杯咖啡 ☕</string>
+    <string name="support_wechat_label">微信收款码</string>
+    <string name="btn_save_qr">保存二维码到相册</string>
+    <string name="support_footer">你的支持是我持续更新的动力 ❤️</string>
+    <string name="qr_content_description">捐赠二维码</string>
+    <string name="toast_qr_read_error">无法读取二维码图片</string>
+    <string name="toast_qr_saved">二维码已保存到相册</string>
+    <string name="toast_qr_save_failed">保存失败：%s</string>
+</resources>
