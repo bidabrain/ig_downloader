@@ -31,7 +31,7 @@ Repo: https://github.com/bidabrain/ig_downloader
 Builds:
   - versionName: '1.24'
     versionCode: 25
-    commit: v1.24
+    commit: 24fa9aaa6cd1bb2febe03994e4247dc98191e82c
     subdir: app
     gradle:
       - release
