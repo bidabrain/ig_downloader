@@ -1,4 +1,4 @@
-package com.instadownloader
+package com.mediasave
 
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse

@@ -1,9 +1,9 @@
-package com.instadownloader.platform
+package com.mediasave.platform
 
-import com.instadownloader.HandlerContext
-import com.instadownloader.MediaItem
-import com.instadownloader.PlatformHandler
-import com.instadownloader.WEB_UA
+import com.mediasave.HandlerContext
+import com.mediasave.MediaItem
+import com.mediasave.PlatformHandler
+import com.mediasave.WEB_UA
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL

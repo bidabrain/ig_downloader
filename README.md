@@ -1,4 +1,4 @@
-# InstaDownloader
+# MediaSave
 
 An Android app for downloading photos and videos from Instagram, X (Twitter), RedNote (小红书), and Douyin (抖音).
 
@@ -118,3 +118,7 @@ Push to `main` or `master` — the APK is built automatically and available unde
 - Android 7.0 (API 24) or higher
 - Internet connection
 - Accounts for platforms with private content (optional for Douyin)
+
+## License
+
+This project is licensed under the [GNU General Public License v3.0](LICENSE).

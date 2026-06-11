@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Downloader</string>
+    <string name="app_name">MediaSave</string>
 
     <!-- Input card -->
     <string name="url_hint">Paste a link…</string>

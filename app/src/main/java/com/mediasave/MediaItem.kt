@@ -1,4 +1,4 @@
-package com.instadownloader
+package com.mediasave
 
 data class MediaItem(
     val type: String,

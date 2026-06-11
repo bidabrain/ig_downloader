@@ -1,8 +1,8 @@
-package com.instadownloader.platform
+package com.mediasave.platform
 
-import com.instadownloader.HandlerContext
-import com.instadownloader.PlatformHandler
-import com.instadownloader.WEB_UA
+import com.mediasave.HandlerContext
+import com.mediasave.PlatformHandler
+import com.mediasave.WEB_UA
 
 class RedNoteHandler : PlatformHandler {
 

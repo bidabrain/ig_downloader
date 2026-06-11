@@ -1,4 +1,4 @@
-package com.instadownloader
+package com.mediasave
 
 import android.content.ContentValues
 import android.graphics.Bitmap

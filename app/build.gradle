@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'com.instadownloader'
+    namespace 'com.mediasave'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.instadownloader"
+        applicationId "com.mediasave"
         minSdk 24
         targetSdk 34
         versionCode 25

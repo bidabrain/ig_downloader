@@ -1,4 +1,4 @@
-package com.instadownloader
+package com.mediasave
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -23,10 +23,10 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.instadownloader.platform.DouyinHandler
-import com.instadownloader.platform.InstagramHandler
-import com.instadownloader.platform.RedNoteHandler
-import com.instadownloader.platform.TwitterHandler
+import com.mediasave.platform.DouyinHandler
+import com.mediasave.platform.InstagramHandler
+import com.mediasave.platform.RedNoteHandler
+import com.mediasave.platform.TwitterHandler
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
