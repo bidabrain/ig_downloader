@@ -1,0 +1,40 @@
+Categories:
+  - Multimedia
+
+License: GPL-3.0-only
+
+SourceCode: https://github.com/bidabrain/ig_downloader
+IssueTracker: https://github.com/bidabrain/ig_downloader/issues
+
+Summary: Download photos and videos from social media
+
+Description: |-
+  MediaSave lets you download photos and videos from Instagram, X (Twitter),
+  RedNote (小红书 / XiaoHongShu) and Douyin (抖音) without watermarks.
+
+  Features:
+
+  * Download photos, videos and carousels from Instagram posts and reels
+  * Download photos, videos and GIFs from X (Twitter)
+  * Download photos and videos from RedNote notes
+  * Download videos from Douyin
+  * Persistent login — log in once per platform, session is saved
+  * Share a URL directly from any app to trigger instant download
+
+AntiFeatures:
+  NonFreeNet:
+    en-US: Accesses Instagram, X (Twitter), RedNote and Douyin — non-free network services.
+
+RepoType: git
+Repo: https://github.com/bidabrain/ig_downloader
+
+Builds:
+  - versionName: '1.24'
+    versionCode: 25
+    commit: v1.24
+    subdir: app
+    gradle:
+      - release
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags
