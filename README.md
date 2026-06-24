@@ -9,8 +9,12 @@ An Android app for downloading photos and videos from Instagram, X (Twitter), Re
 - Download photos and videos from RedNote (小红书 / XiaoHongShu) notes
 - Download videos and image sets from Douyin (抖音) posts
 - Supports multi-photo carousel posts on all platforms
+- Thumbnail previews — every found item shows a preview image in the list
+- Selective download — pick exactly which items to save with per-item checkboxes
+- Optional third-party resolver for Douyin (viparse.com), toggleable in Settings
 - Persistent login — log in once per platform, session is saved automatically
 - Share a URL directly from any supported app to open it instantly
+- Press back twice to exit — temporary cache is cleared, downloaded files are kept
 
 ## Usage
 
@@ -21,14 +25,14 @@ An Android app for downloading photos and videos from Instagram, X (Twitter), Re
 1. Open a post in the Instagram app
 2. Tap **Share → Copy Link** or **Share to...** and select this app
 3. The post loads automatically
-4. Tap **Download All** to save
+4. Select the items you want and tap **Download** to save
 
 #### Method 2: Paste a URL
 
 1. Open the app
 2. Paste an Instagram URL into the input bar (e.g. `https://www.instagram.com/p/ABC123/`)
 3. The page loads automatically after pasting
-4. Tap **Download All** to save
+4. Select the items you want and tap **Download** to save
 
 ### X (Twitter)
 
@@ -37,14 +41,14 @@ An Android app for downloading photos and videos from Instagram, X (Twitter), Re
 1. Open a post in the X app
 2. Tap **Share → Copy link to post** or **Share to...** and select this app
 3. The post loads automatically
-4. Tap **Download All** to save
+4. Select the items you want and tap **Download** to save
 
 #### Method 2: Paste a URL
 
 1. Open the app
 2. Paste an X URL into the input bar (e.g. `https://x.com/username/status/1234567890`)
 3. The page loads automatically after pasting
-4. Tap **Download All** to save
+4. Select the items you want and tap **Download** to save
 
 ### RedNote (小红书)
 
@@ -53,14 +57,14 @@ An Android app for downloading photos and videos from Instagram, X (Twitter), Re
 1. Open a note in the RedNote app
 2. Tap **Share → Copy Link** or **Share to...** and select this app
 3. The note loads automatically
-4. Tap **Download All** to save
+4. Select the items you want and tap **Download** to save
 
 #### Method 2: Paste a URL
 
 1. Open the app
 2. Paste a RedNote URL into the input bar (e.g. `https://www.xiaohongshu.com/explore/ABC123`)
 3. The page loads automatically after pasting
-4. Tap **Download All** to save
+4. Select the items you want and tap **Download** to save
 
 ### Douyin (抖音)
 
@@ -69,20 +73,36 @@ An Android app for downloading photos and videos from Instagram, X (Twitter), Re
 1. Open a video in the Douyin app
 2. Tap **Share → Copy Link** or **Share to...** and select this app
 3. The video loads automatically
-4. Tap **Download All** to save
+4. Select the items you want and tap **Download** to save
 
 #### Method 2: Paste a URL
 
 1. Open the app
 2. Paste a Douyin share link into the input bar (e.g. `https://v.douyin.com/iXxxxxx/`)
 3. The page loads automatically after pasting
-4. Tap **Download All** to save
+4. Select the items you want and tap **Download** to save
+
+### Selecting which files to download
+
+Once media is found, each item appears in a list with a **thumbnail preview** and a **checkbox** (all checked by default). Untick anything you don't want, then tap **Download** to save only the selected items. The header shows how many files were found.
 
 ### First-time login
 
 If you are not logged in, the app will show the platform's login page. Log in once — your session is saved and you won't need to log in again.
 
-> **Douyin note:** A guest session works for most public videos without logging in. Login is only required for private accounts.
+> **Douyin note:** A guest session works for most public videos without logging in. Login is only required for private accounts. You can also enable an optional third-party resolver — see [Settings & About](#settings--about) below.
+
+### Settings & About
+
+Tap the **gear icon** in the top-right toolbar to open Settings / About:
+
+- App overview and version number
+- Link to this source repository
+- **Use third-party site for Douyin** — a pill toggle. When enabled, Douyin links are resolved via [viparse.com](https://viparse.com/) instead of the built-in extractor (the built-in mechanism is unchanged when the toggle is off). Free use is limited to about **6 parses/day** as a guest, or **10/day** once logged in. Tap **Log in to viparse.com** to sign in through the in-app browser; the session is saved (persists across cache clears) for higher quota.
+
+### Exiting & cache
+
+Press **back twice** to fully exit the app. This clears the temporary cache (WebView cache, thumbnails) but **keeps your login sessions and any files already saved to your phone**.
 
 ### Downloaded files
 

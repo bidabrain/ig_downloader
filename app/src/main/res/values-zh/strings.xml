@@ -23,6 +23,8 @@
     <string name="status_download_complete">下载完成，共 %1$d 个文件，保存至 下载/%2$s/</string>
     <string name="status_download_partial">完成：%1$d/%2$d 成功</string>
     <string name="status_permission_granted">权限已获取，请再次点击下载</string>
+    <string name="status_no_selection">请至少选择一个要下载的项目</string>
+    <string name="thumbnail_description">媒体缩略图</string>
 
     <!-- Toasts -->
     <string name="toast_enter_url">请先输入链接</string>
@@ -38,6 +40,20 @@
     <string name="platform_rednote">小红书</string>
     <string name="platform_twitter">X / Twitter</string>
     <string name="platform_douyin">抖音</string>
+
+    <!-- Settings -->
+    <string name="settings_section">设置</string>
+    <string name="settings_tp_douyin_title">使用第三方网站获取抖音下载</string>
+    <string name="settings_tp_douyin_desc">通过 viparse.com 解析抖音链接，替代内置提取机制。免费额度约为每天 6 次；额度用完后请点击下方按钮登录以获得更多次数。</string>
+    <string name="settings_tp_douyin_login">登录 viparse.com</string>
+
+    <!-- About page -->
+    <string name="about_title">关于</string>
+    <string name="about_overview">一款免费、无广告的安卓应用，用于下载 Instagram、X (Twitter)、小红书和抖音的图片与视频。粘贴或分享链接即可自动识别并将媒体保存到手机。</string>
+    <string name="about_version_label">版本号</string>
+    <string name="about_repo_label">源代码</string>
+    <string name="about_repo_url">https://github.com/bidabrain/ig_downloader</string>
+    <string name="about_license">基于 GPL-3.0 协议开源</string>
 
     <!-- Support / donation page -->
     <string name="support_title">支持开发者</string>

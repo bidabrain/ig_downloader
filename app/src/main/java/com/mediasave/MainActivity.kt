@@ -5,8 +5,11 @@ import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -24,6 +27,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.mediasave.platform.DouyinHandler
+import com.mediasave.platform.DouyinViparseHandler
 import com.mediasave.platform.InstagramHandler
 import com.mediasave.platform.RedNoteHandler
 import com.mediasave.platform.TwitterHandler
@@ -61,6 +65,7 @@ class MainActivity : AppCompatActivity() {
     // ── Download list ─────────────────────────────────────────────────────────
     private lateinit var mediaListContainer: LinearLayout
     private val downloadItemViews = mutableListOf<ItemViewHolder>()
+    private val thumbnailCache = LinkedHashMap<String, Bitmap>()
 
     private val capturedMedia = LinkedHashMap<String, MediaItem>()
     private var pendingUrl: String? = null
@@ -71,9 +76,14 @@ class MainActivity : AppCompatActivity() {
     private var justLoggedIn = false
     private var lastExtractedUrl: String? = null
     private var currentHandler: PlatformHandler? = null
+    // Incremented on every new search. Each HandlerContext binds the session id active when
+    // it was created, so stale async work (background fetches, delayed JS re-injections) from
+    // a previous search is ignored instead of leaking media into the new results.
+    private var sessionId = 0
 
     // ── Platform registry ─────────────────────────────────────────────────────
     private val handlers: List<PlatformHandler> = listOf(
+        DouyinViparseHandler(),   // wins over DouyinHandler only when the toggle is on
         DouyinHandler(),
         RedNoteHandler(),
         TwitterHandler(),
@@ -86,6 +96,8 @@ class MainActivity : AppCompatActivity() {
             "Accept-Language"  to "en-US,en;q=0.9",
             "Accept"           to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         )
+        const val ACTION_OPEN_BROWSER = "com.mediasave.OPEN_BROWSER"
+        const val EXTRA_BROWSER_URL   = "browser_url"
         const val REQ_WRITE_STORAGE = 1001
         const val INFO_IDLE         = 0
         const val INFO_LOADING      = 1
@@ -98,9 +110,13 @@ class MainActivity : AppCompatActivity() {
     enum class ItemStatus { WAITING, DOWNLOADING, DONE, ERROR }
 
     inner class ItemViewHolder(
+        val item: MediaItem,
+        private val checkbox: CheckBox,
         private val spinner: ProgressBar,
         private val icon: ImageView
     ) {
+        val isSelected: Boolean get() = checkbox.isChecked
+        fun setSelectable(enabled: Boolean) { checkbox.isEnabled = enabled }
         fun setStatus(status: ItemStatus) {
             when (status) {
                 ItemStatus.WAITING -> {
@@ -144,6 +160,7 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppSettings.load(this)
         setContentView(R.layout.activity_main)
 
         toolbar                = findViewById(R.id.toolbar)
@@ -226,9 +243,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == R.id.action_support) {
-            startActivity(Intent(this, SupportActivity::class.java))
-            return true
+        when (item.itemId) {
+            R.id.action_support -> {
+                startActivity(Intent(this, SupportActivity::class.java))
+                return true
+            }
+            R.id.action_about -> {
+                startActivity(Intent(this, AboutActivity::class.java))
+                return true
+            }
         }
         return super.onOptionsItemSelected(item)
     }
@@ -244,6 +267,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleIntent(intent: Intent) {
+        // Open a specific page in the in-app browser for manual login (e.g. viparse.com).
+        if (intent.action == ACTION_OPEN_BROWSER) {
+            val browserUrl = intent.getStringExtra(EXTRA_BROWSER_URL) ?: return
+            webView.settings.userAgentString = WEB_UA
+            webView.loadUrl(browserUrl, EXTRA_HEADERS)
+            showBrowser(true)
+            return
+        }
         val url = intent.getStringExtra(Intent.EXTRA_TEXT) ?: intent.data?.toString() ?: return
         if (handlers.any { it.matches(url) }) {
             urlInput.setText(url)
@@ -291,7 +322,11 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
-                setInfoState(INFO_LOADING)
+                // Don't revert to the loading screen if media is already found and shown.
+                // Some handlers (e.g. Douyin) navigate the WebView to a display-only page
+                // after extraction (navigateForDisplay) — that must not wipe the results card.
+                if (capturedMedia.isEmpty() && currentInfoState != INFO_DOWNLOADING)
+                    setInfoState(INFO_LOADING)
             }
 
             override fun onPageFinished(view: WebView, url: String) {
@@ -357,37 +392,48 @@ class MainActivity : AppCompatActivity() {
 
     // ── Handler context ───────────────────────────────────────────────────────
 
-    private fun makeContext(): HandlerContext = object : HandlerContext {
-        override fun reportMedia(type: String, url: String) {
-            if (url.isBlank() || url.startsWith("blob:") || url.startsWith("data:")) return
-            if (!activeDownloadSession) return
-            val source = currentHandler?.platformId ?: "instagram"
-            runOnUiThread {
-                val item = MediaItem(type, url, buildFilename(url, type), source)
-                capturedMedia[url] = item
-                updateDownloadHeader()
-                addMediaListItem(item)
+    private fun makeContext(): HandlerContext {
+        // Bind the session active at creation time. Any callback that fires after a new
+        // search started (mySession != sessionId) is from a stale session and is dropped.
+        val mySession = sessionId
+        return object : HandlerContext {
+            override fun reportMedia(type: String, url: String) {
+                if (url.isBlank() || url.startsWith("blob:") || url.startsWith("data:")) return
+                if (mySession != sessionId || !activeDownloadSession) return
+                val source = currentHandler?.platformId ?: "instagram"
+                runOnUiThread {
+                    // Re-check on the UI thread: a new search may have started since this was queued.
+                    if (mySession != sessionId || !activeDownloadSession) return@runOnUiThread
+                    // Dedupe by URL so the visible list stays in sync with the header count.
+                    if (capturedMedia.containsKey(url)) return@runOnUiThread
+                    val item = MediaItem(type, url, buildFilename(url, type), source)
+                    capturedMedia[url] = item
+                    updateDownloadHeader()
+                    addMediaListItem(item)
+                }
             }
-        }
-        override fun setStatus(msg: String) {
-            runOnUiThread {
-                statusText.text = msg
-                if (currentInfoState == INFO_LOADING) setInfoState(INFO_IDLE)
+            override fun setStatus(msg: String) {
+                runOnUiThread {
+                    if (mySession != sessionId) return@runOnUiThread
+                    statusText.text = msg
+                    if (currentInfoState == INFO_LOADING) setInfoState(INFO_IDLE)
+                }
             }
-        }
-        override fun getCookie(domain: String): String?  = CookieManager.getInstance().getCookie(domain)
-        override fun injectJs(js: String)                { webView.evaluateJavascript(js, null) }
-        override fun postDelayed(ms: Long, action: () -> Unit) { webView.postDelayed(action, ms) }
-        override fun runBackground(action: () -> Unit)   { Thread(action).start() }
-        override fun runOnUi(action: () -> Unit)         { runOnUiThread(action) }
-        override fun navigateTo(url: String)             { runOnUiThread { loadUrl(url) } }
-        override fun navigateForDisplay(url: String) {
-            runOnUiThread {
-                webView.settings.userAgentString = currentHandler?.preferredUserAgent(url)
-                webView.loadUrl(url, EXTRA_HEADERS)
+            override fun getCookie(domain: String): String?  = CookieManager.getInstance().getCookie(domain)
+            override fun injectJs(js: String)                { if (mySession == sessionId) webView.evaluateJavascript(js, null) }
+            override fun postDelayed(ms: Long, action: () -> Unit) { webView.postDelayed({ if (mySession == sessionId) action() }, ms) }
+            override fun runBackground(action: () -> Unit)   { Thread(action).start() }
+            override fun runOnUi(action: () -> Unit)         { runOnUiThread(action) }
+            override fun navigateTo(url: String)             { runOnUiThread { if (mySession == sessionId) loadUrl(url) } }
+            override fun navigateForDisplay(url: String) {
+                runOnUiThread {
+                    if (mySession != sessionId) return@runOnUiThread
+                    webView.settings.userAgentString = currentHandler?.preferredUserAgent(url)
+                    webView.loadUrl(url, EXTRA_HEADERS)
+                }
             }
+            override fun setUserAgent(ua: String?) { runOnUiThread { if (mySession == sessionId) webView.settings.userAgentString = ua } }
         }
-        override fun setUserAgent(ua: String?) { runOnUiThread { webView.settings.userAgentString = ua } }
     }
 
     // ── UI state management ───────────────────────────────────────────────────
@@ -459,14 +505,19 @@ class MainActivity : AppCompatActivity() {
         downloadTriggered     = false
         lastExtractedUrl      = null
         activeDownloadSession = true
+        // New session: invalidate any in-flight callbacks from the previous search.
+        sessionId++
 
         // Reset media list for new session
         capturedMedia.clear()
         downloadItemViews.clear()
+        thumbnailCache.clear()
         mediaListContainer.removeAllViews()
 
         showBrowser(false)
-        webView.loadUrl(finalUrl, EXTRA_HEADERS)
+        // A handler may redirect the initial load (e.g. to a third-party parser site).
+        val loadTarget = currentHandler?.initialLoadUrl(finalUrl) ?: finalUrl
+        webView.loadUrl(loadTarget, EXTRA_HEADERS)
     }
 
     /** Update the compact header row (platform pill + count + type). */
@@ -509,6 +560,8 @@ class MainActivity : AppCompatActivity() {
 
         val row      = layoutInflater.inflate(R.layout.item_media, mediaListContainer, false)
         val colorBar = row.findViewById<View>(R.id.itemColorBar)
+        val checkbox = row.findViewById<CheckBox>(R.id.itemCheckbox)
+        val thumbnail = row.findViewById<ImageView>(R.id.itemThumbnail)
         val filename = row.findViewById<TextView>(R.id.itemFilename)
         val platform = row.findViewById<TextView>(R.id.itemPlatform)
         val type     = row.findViewById<TextView>(R.id.itemType)
@@ -517,21 +570,98 @@ class MainActivity : AppCompatActivity() {
 
         val color = platformColorFor(item.source)
         colorBar.setBackgroundColor(color)
+        checkbox.isChecked = true
+        // Tapping anywhere on the row toggles selection too
+        row.setOnClickListener { checkbox.isChecked = !checkbox.isChecked }
         filename.text = item.filename
         (platform.background.mutate() as? GradientDrawable)?.setColor(color)
         platform.text = platformNameFor(item.source)
         type.text     = if (item.type == "video") getString(R.string.media_type_video) else getString(R.string.media_type_image)
 
+        loadThumbnail(item, thumbnail)
+
         mediaListContainer.addView(row)
-        downloadItemViews.add(ItemViewHolder(spinner, icon))
+        downloadItemViews.add(ItemViewHolder(item, checkbox, spinner, icon))
+    }
+
+    /** Load a thumbnail for [item] into [target] asynchronously, caching the result. */
+    private fun loadThumbnail(item: MediaItem, target: ImageView) {
+        thumbnailCache[item.url]?.let { target.setImageBitmap(it); return }
+        target.setImageDrawable(null)          // show placeholder background until loaded
+        target.tag = item.url
+        val mySession = sessionId
+        Thread {
+            val bmp = try { fetchThumbnail(item) } catch (_: Exception) { null } ?: return@Thread
+            runOnUiThread {
+                if (mySession != sessionId) return@runOnUiThread   // list belongs to an old search
+                thumbnailCache[item.url] = bmp
+                if (target.tag == item.url) target.setImageBitmap(bmp)
+            }
+        }.start()
+    }
+
+    private fun fetchThumbnail(item: MediaItem): Bitmap? =
+        if (item.type == "video") fetchVideoThumbnail(item) else fetchImageThumbnail(item)
+
+    private fun thumbHeaders(item: MediaItem): Map<String, String> {
+        val handler = handlerFor(item.source)
+        val cookie  = handler?.cookieDomain?.let { CookieManager.getInstance().getCookie(it) }
+        return handler?.buildDownloadHeaders(item.url, cookie) ?: mapOf("User-Agent" to WEB_UA)
+    }
+
+    private fun fetchImageThumbnail(item: MediaItem): Bitmap? {
+        val conn = (URL(item.url).openConnection() as HttpURLConnection).apply {
+            requestMethod  = "GET"
+            connectTimeout = 15_000
+            readTimeout    = 30_000
+            thumbHeaders(item).forEach { (k, v) -> setRequestProperty(k, v) }
+            connect()
+        }
+        val code = conn.responseCode
+        if (code != HttpURLConnection.HTTP_OK && code != HttpURLConnection.HTTP_PARTIAL) return null
+        val bytes = conn.inputStream.use { it.readBytes() }
+        val target = (96 * resources.displayMetrics.density).toInt()
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        val opts = BitmapFactory.Options().apply {
+            inSampleSize = calcInSampleSize(bounds.outWidth, bounds.outHeight, target)
+        }
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+    }
+
+    private fun fetchVideoThumbnail(item: MediaItem): Bitmap? {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(item.url, thumbHeaders(item))
+            retriever.getFrameAtTime(0)
+        } catch (_: Exception) {
+            null
+        } finally {
+            try { retriever.release() } catch (_: Exception) {}
+        }
+    }
+
+    private fun calcInSampleSize(width: Int, height: Int, target: Int): Int {
+        if (width <= 0 || height <= 0 || target <= 0) return 1
+        var sample = 1
+        while (width / (sample * 2) >= target && height / (sample * 2) >= target) sample *= 2
+        return sample
     }
 
     // ── Download ──────────────────────────────────────────────────────────────
 
     private fun downloadAll() {
-        if (capturedMedia.isEmpty()) {
+        if (downloadItemViews.isEmpty()) {
             statusText.text = getString(R.string.status_no_media)
             setInfoState(INFO_IDLE)
+            return
+        }
+
+        // Only download the items the user ticked.
+        val targets = downloadItemViews.filter { it.isSelected }
+        if (targets.isEmpty()) {
+            statusText.text = getString(R.string.status_no_selection)
+            Toast.makeText(this, getString(R.string.status_no_selection), Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -544,49 +674,46 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val items      = capturedMedia.values.toList()
-        val total      = items.size
-        val folderName = handlerFor(items.firstOrNull()?.source ?: "")?.folderName ?: "Downloads"
+        val total      = targets.size
+        val folderName = handlerFor(targets.firstOrNull()?.item?.source ?: "")?.folderName ?: "Downloads"
 
+        // Stop capturing new media but keep the list so the user can download more later.
         activeDownloadSession = false
         downloadTriggered     = true
         pendingUrl            = null
-        capturedMedia.clear()
 
         downloadBtn.isEnabled        = false
         downloadProgressBar.max      = 100
         downloadProgressBar.progress = 0
-        // Reset all item rows to "waiting" before download starts
-        downloadItemViews.forEach { it.setStatus(ItemStatus.WAITING) }
+        // Lock selection and reset the selected rows to "waiting" before download starts
+        downloadItemViews.forEach { it.setSelectable(false) }
+        targets.forEach { it.setStatus(ItemStatus.WAITING) }
         setInfoState(INFO_DOWNLOADING)
 
         Thread {
             var succeeded = 0
-            for ((index, item) in items.withIndex()) {
+            for ((index, holder) in targets.withIndex()) {
                 val num = index + 1
-                runOnUiThread {
-                    downloadItemViews.getOrNull(index)?.setStatus(ItemStatus.DOWNLOADING)
-                }
+                runOnUiThread { holder.setStatus(ItemStatus.DOWNLOADING) }
                 try {
-                    downloadFileInApp(item) { pct ->
+                    downloadFileInApp(holder.item) { pct ->
                         runOnUiThread {
                             downloadProgressBar.progress = (index * 100 + pct) / total
                             downloadStatusLabel.text = getString(R.string.status_downloading_progress, num, total, pct)
                         }
                     }
                     succeeded++
-                    runOnUiThread {
-                        downloadItemViews.getOrNull(index)?.setStatus(ItemStatus.DONE)
-                    }
+                    runOnUiThread { holder.setStatus(ItemStatus.DONE) }
                 } catch (e: Exception) {
                     runOnUiThread {
-                        downloadItemViews.getOrNull(index)?.setStatus(ItemStatus.ERROR)
+                        holder.setStatus(ItemStatus.ERROR)
                         downloadStatusLabel.text = getString(R.string.status_item_failed, num, e.message)
                     }
                 }
             }
             runOnUiThread {
                 downloadBtn.isEnabled = true
+                downloadItemViews.forEach { it.setSelectable(true) }
                 statusText.text = if (succeeded == total)
                     getString(R.string.status_download_complete, total, folderName)
                 else
@@ -689,16 +816,41 @@ class MainActivity : AppCompatActivity() {
     private var backPressedTime = 0L
 
     override fun onBackPressed() {
+        // While the in-app browser is showing, back should leave the browser, not the app.
+        if (webView.visibility == View.VISIBLE) {
+            if (webView.canGoBack()) webView.goBack() else showBrowser(false)
+            return
+        }
+
         val now = System.currentTimeMillis()
         if (now - backPressedTime < 2000) {
-            urlInput.setText("")
+            // Second back gesture: clear caches and fully exit. Files already saved to the
+            // phone's Downloads folder are untouched — only temporary app/web cache is wiped.
+            sessionId++
             pendingUrl            = null
             activeDownloadSession = false
             capturedMedia.clear()
-            super.onBackPressed()
+            urlInput.setText("")
+            clearAppCache()
+            finishAndRemoveTask()
         } else {
             backPressedTime = now
             Toast.makeText(this, getString(R.string.toast_back_exit), Toast.LENGTH_SHORT).show()
         }
+    }
+
+    /** Wipe temporary caches on exit. Login cookies and downloaded files are preserved. */
+    private fun clearAppCache() {
+        try { webView.clearCache(true) }       catch (_: Exception) {}
+        try { webView.clearHistory() }          catch (_: Exception) {}
+        try { webView.clearFormData() }         catch (_: Exception) {}
+        try { WebStorage.getInstance().deleteAllData() } catch (_: Exception) {}
+        thumbnailCache.clear()
+        try { cacheDir?.let { clearDirContents(it) } }         catch (_: Exception) {}
+        try { externalCacheDir?.let { clearDirContents(it) } } catch (_: Exception) {}
+    }
+
+    private fun clearDirContents(dir: File) {
+        dir.listFiles()?.forEach { it.deleteRecursively() }
     }
 }

@@ -8,4 +8,10 @@
         android:title="@string/support_title"
         app:showAsAction="always" />
 
+    <item
+        android:id="@+id/action_about"
+        android:icon="@drawable/ic_settings"
+        android:title="@string/about_title"
+        app:showAsAction="always" />
+
 </menu>

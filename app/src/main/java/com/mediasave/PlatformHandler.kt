@@ -65,6 +65,13 @@ interface PlatformHandler {
     /** Return true if this handler should own the given URL. */
     fun matches(url: String): Boolean
 
+    /**
+     * The URL the WebView should actually load when [url] is committed to this handler.
+     * Defaults to [url] itself. Override to redirect the initial load elsewhere — e.g. a
+     * third-party parser site — while keeping [url] as the logical target.
+     */
+    fun initialLoadUrl(url: String): String = url
+
     /** Called on the main thread when the WebView finishes loading a page. */
     fun onPageFinished(url: String, ctx: HandlerContext)
 

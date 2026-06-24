@@ -3,13 +3,32 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:minHeight="60dp">
+    android:gravity="center_vertical"
+    android:minHeight="64dp">
 
     <!-- Platform color bar (spans full row height) -->
     <View
         android:id="@+id/itemColorBar"
         android:layout_width="4dp"
         android:layout_height="match_parent" />
+
+    <!-- Selection checkbox -->
+    <CheckBox
+        android:id="@+id/itemCheckbox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="2dp"
+        android:layout_gravity="center_vertical" />
+
+    <!-- Thumbnail preview -->
+    <ImageView
+        android:id="@+id/itemThumbnail"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:layout_gravity="center_vertical"
+        android:scaleType="centerCrop"
+        android:background="@color/divider"
+        android:contentDescription="@string/thumbnail_description" />
 
     <!-- File info -->
     <LinearLayout

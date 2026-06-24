@@ -23,6 +23,8 @@
     <string name="status_download_complete">Done, %1$d files saved to Downloads/%2$s/</string>
     <string name="status_download_partial">Done: %1$d/%2$d succeeded</string>
     <string name="status_permission_granted">Permission granted, tap download again</string>
+    <string name="status_no_selection">Select at least one item to download</string>
+    <string name="thumbnail_description">Media thumbnail</string>
 
     <!-- Toasts -->
     <string name="toast_enter_url">Enter a URL first</string>
@@ -38,6 +40,20 @@
     <string name="platform_rednote">RedNote</string>
     <string name="platform_twitter">X / Twitter</string>
     <string name="platform_douyin">Douyin</string>
+
+    <!-- Settings -->
+    <string name="settings_section">Settings</string>
+    <string name="settings_tp_douyin_title">Use third-party site for Douyin</string>
+    <string name="settings_tp_douyin_desc">Resolve Douyin links via viparse.com instead of the built-in extractor. Free use is limited to about 6 parses per day; log in below for more.</string>
+    <string name="settings_tp_douyin_login">Log in to viparse.com</string>
+
+    <!-- About page -->
+    <string name="about_title">About</string>
+    <string name="about_overview">A free, ad-free Android app for downloading photos and videos from Instagram, X (Twitter), RedNote (小红书) and Douyin (抖音). Paste or share a link to auto-detect and save media to your phone.</string>
+    <string name="about_version_label">Version</string>
+    <string name="about_repo_label">Source code</string>
+    <string name="about_repo_url">https://github.com/bidabrain/ig_downloader</string>
+    <string name="about_license">Licensed under GPL-3.0</string>
 
     <!-- Support / donation page -->
     <string name="support_title">Support Developer</string>
