@@ -16,5 +16,8 @@
         <domain includeSubdomains="true">iesdouyin.com</domain>
         <domain includeSubdomains="true">bytecdn.cn</domain>
         <domain includeSubdomains="true">pstatp.com</domain>
+        <domain includeSubdomains="true">ixigua.com</domain>
+        <domain includeSubdomains="true">douyinvod.com</domain>
+        <domain includeSubdomains="true">greenvideo.cc</domain>
     </domain-config>
 </network-security-config>

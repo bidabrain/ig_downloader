@@ -11,7 +11,7 @@ object AppSettings {
     private const val PREFS         = "settings"
     private const val KEY_TP_DOUYIN = "third_party_douyin"
 
-    /** When true, Douyin links are resolved via the third-party parser (viparse.com). */
+    /** When true, Douyin links are resolved via the third-party parser (greenvideo.cc). */
     @Volatile var thirdPartyDouyin = false
         private set
 

@@ -145,22 +145,6 @@
 
                     </LinearLayout>
 
-                    <!-- Log in to viparse for more daily quota -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/viparseLoginBtn"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:layout_marginTop="16dp"
-                        android:text="@string/settings_tp_douyin_login"
-                        android:textSize="13sp"
-                        android:textColor="@color/primary"
-                        app:icon="@drawable/ic_person"
-                        app:iconTint="@color/primary"
-                        app:iconGravity="start"
-                        app:strokeColor="@color/primary"
-                        app:cornerRadius="12dp" />
-
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

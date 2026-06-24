@@ -7,7 +7,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.appbar.MaterialToolbar
-import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.switchmaterial.SwitchMaterial
 
@@ -25,17 +24,6 @@ class AboutActivity : AppCompatActivity() {
         tpSwitch.isChecked = AppSettings.thirdPartyDouyin
         tpSwitch.setOnCheckedChangeListener { _, checked ->
             AppSettings.setThirdPartyDouyin(this, checked)
-        }
-
-        // ── Log in to viparse via the in-app browser ─────────────────────────────
-        findViewById<MaterialButton>(R.id.viparseLoginBtn).setOnClickListener {
-            val intent = Intent(this, MainActivity::class.java).apply {
-                action = MainActivity.ACTION_OPEN_BROWSER
-                putExtra(MainActivity.EXTRA_BROWSER_URL, "https://viparse.com/")
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            }
-            startActivity(intent)
-            finish()
         }
 
         // ── About info ───────────────────────────────────────────────────────────

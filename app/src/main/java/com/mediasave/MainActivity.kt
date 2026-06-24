@@ -27,7 +27,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.mediasave.platform.DouyinHandler
-import com.mediasave.platform.DouyinViparseHandler
+import com.mediasave.platform.DouyinGreenVideoHandler
 import com.mediasave.platform.InstagramHandler
 import com.mediasave.platform.RedNoteHandler
 import com.mediasave.platform.TwitterHandler
@@ -83,7 +83,7 @@ class MainActivity : AppCompatActivity() {
 
     // ── Platform registry ─────────────────────────────────────────────────────
     private val handlers: List<PlatformHandler> = listOf(
-        DouyinViparseHandler(),   // wins over DouyinHandler only when the toggle is on
+        DouyinGreenVideoHandler(),   // wins over DouyinHandler only when the toggle is on
         DouyinHandler(),
         RedNoteHandler(),
         TwitterHandler(),
@@ -267,7 +267,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleIntent(intent: Intent) {
-        // Open a specific page in the in-app browser for manual login (e.g. viparse.com).
+        // Open a specific page in the in-app browser (e.g. greenvideo.cc).
         if (intent.action == ACTION_OPEN_BROWSER) {
             val browserUrl = intent.getStringExtra(EXTRA_BROWSER_URL) ?: return
             webView.settings.userAgentString = WEB_UA
@@ -532,6 +532,8 @@ class MainActivity : AppCompatActivity() {
         val typeText = when {
             "video" in types && "image" in types -> getString(R.string.media_type_mixed)
             "video" in types                     -> getString(R.string.media_type_video)
+            "image" in types                     -> getString(R.string.media_type_image)
+            "audio" in types                     -> getString(R.string.media_type_audio)
             else                                 -> getString(R.string.media_type_image)
         }
 
@@ -576,7 +578,11 @@ class MainActivity : AppCompatActivity() {
         filename.text = item.filename
         (platform.background.mutate() as? GradientDrawable)?.setColor(color)
         platform.text = platformNameFor(item.source)
-        type.text     = if (item.type == "video") getString(R.string.media_type_video) else getString(R.string.media_type_image)
+        type.text     = when (item.type) {
+            "video" -> getString(R.string.media_type_video)
+            "audio" -> getString(R.string.media_type_audio)
+            else    -> getString(R.string.media_type_image)
+        }
 
         loadThumbnail(item, thumbnail)
 
@@ -600,8 +606,11 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
-    private fun fetchThumbnail(item: MediaItem): Bitmap? =
-        if (item.type == "video") fetchVideoThumbnail(item) else fetchImageThumbnail(item)
+    private fun fetchThumbnail(item: MediaItem): Bitmap? = when (item.type) {
+        "video" -> fetchVideoThumbnail(item)
+        "audio" -> null                       // audio has no frame to show; keep placeholder
+        else    -> fetchImageThumbnail(item)
+    }
 
     private fun thumbHeaders(item: MediaItem): Map<String, String> {
         val handler = handlerFor(item.source)
@@ -803,7 +812,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun buildFilename(url: String, type: String): String {
-        val ext = if (type == "video") "mp4" else "jpg"
+        val ext = when (type) {
+            "video" -> "mp4"
+            "audio" -> "mp3"
+            else    -> "jpg"
+        }
         return try {
             val seg = Uri.parse(url).lastPathSegment?.substringBefore("?")?.takeIf { it.isNotBlank() }
                 ?: return "media_${System.currentTimeMillis()}.$ext"

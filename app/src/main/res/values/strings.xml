@@ -34,6 +34,7 @@
     <string name="media_count">%d files</string>
     <string name="media_type_video">Video</string>
     <string name="media_type_image">Image</string>
+    <string name="media_type_audio">Audio</string>
     <string name="media_type_mixed">Video+Image</string>
 
     <!-- Platform names -->
@@ -44,8 +45,7 @@
     <!-- Settings -->
     <string name="settings_section">Settings</string>
     <string name="settings_tp_douyin_title">Use third-party site for Douyin</string>
-    <string name="settings_tp_douyin_desc">Resolve Douyin links via viparse.com instead of the built-in extractor. Free use is limited to about 6 parses per day; log in below for more.</string>
-    <string name="settings_tp_douyin_login">Log in to viparse.com</string>
+    <string name="settings_tp_douyin_desc">Resolve Douyin links via greenvideo.cc instead of the built-in extractor.</string>
 
     <!-- About page -->
     <string name="about_title">About</string>

@@ -34,6 +34,7 @@
     <string name="media_count">%d 个文件</string>
     <string name="media_type_video">视频</string>
     <string name="media_type_image">图片</string>
+    <string name="media_type_audio">音频</string>
     <string name="media_type_mixed">视频+图片</string>
 
     <!-- Platform names -->
@@ -44,8 +45,7 @@
     <!-- Settings -->
     <string name="settings_section">设置</string>
     <string name="settings_tp_douyin_title">使用第三方网站获取抖音下载</string>
-    <string name="settings_tp_douyin_desc">通过 viparse.com 解析抖音链接，替代内置提取机制。免费额度约为每天 6 次；额度用完后请点击下方按钮登录以获得更多次数。</string>
-    <string name="settings_tp_douyin_login">登录 viparse.com</string>
+    <string name="settings_tp_douyin_desc">通过 greenvideo.cc 解析抖音链接，替代内置提取机制。</string>
 
     <!-- About page -->
     <string name="about_title">关于</string>
