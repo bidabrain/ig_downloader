@@ -523,7 +523,25 @@ class MainActivity : AppCompatActivity() {
         mediaListContainer.removeAllViews()
 
         showBrowser(false)
-        webView.loadUrl(finalUrl, EXTRA_HEADERS)
+
+        // Try the handler's plain-HTTP resolver first; only load the WebView if it fails.
+        val handler = currentHandler ?: run { webView.loadUrl(finalUrl, EXTRA_HEADERS); return }
+        val ctx = makeContext()
+        val mySession = sessionId
+        setInfoState(INFO_LOADING)
+        Thread {
+            val resolved = try { handler.resolveDirect(finalUrl, ctx) } catch (_: Exception) { false }
+            runOnUiThread {
+                if (mySession != sessionId) return@runOnUiThread
+                if (resolved) {
+                    // Media is already in the list; leave the WebView alone.
+                    downloadTriggered = true
+                    lastExtractedUrl  = finalUrl
+                } else {
+                    webView.loadUrl(finalUrl, EXTRA_HEADERS)
+                }
+            }
+        }.start()
     }
 
     /** Update the compact header row (platform pill + count + type). */
@@ -742,16 +760,26 @@ class MainActivity : AppCompatActivity() {
         val headers    = handler?.buildDownloadHeaders(item.url, cookie)
             ?: mapOf("User-Agent" to WEB_UA)
 
-        val conn = (URL(item.url).openConnection() as HttpURLConnection).apply {
+        fun open(url: String) = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod  = "GET"
             connectTimeout = 15_000
             readTimeout    = 60_000
             headers.forEach { (k, v) -> setRequestProperty(k, v) }
             connect()
         }
-        val responseCode = conn.responseCode
-        if (responseCode != HttpURLConnection.HTTP_OK && responseCode != HttpURLConnection.HTTP_PARTIAL)
-            throw Exception("HTTP $responseCode")
+        fun HttpURLConnection.ok() = try {
+            responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_PARTIAL
+        } catch (_: Exception) { false }
+
+        var conn = try { open(item.url) } catch (e: Exception) {
+            open(handler?.downloadFallbackUrl(item.url) ?: throw e)
+        }
+        if (!conn.ok()) {
+            // e.g. Douyin's ratio=1080p may not exist for this video — retry at 720p.
+            val fallback = handler?.downloadFallbackUrl(item.url)
+            if (fallback != null) { conn.disconnect(); conn = open(fallback) }
+        }
+        if (!conn.ok()) throw Exception("HTTP ${try { conn.responseCode } catch (_: Exception) { -1 }}")
 
         val totalBytes = conn.contentLengthLong
         val input      = conn.inputStream
@@ -819,6 +847,9 @@ class MainActivity : AppCompatActivity() {
             else    -> "jpg"
         }
         return try {
+            // Douyin play URLs all end in /play/ — name them after the video instead.
+            Uri.parse(url).getQueryParameter("video_id")?.takeIf { it.isNotBlank() }
+                ?.let { return "douyin_$it.$ext" }
             val seg = Uri.parse(url).lastPathSegment?.substringBefore("?")?.takeIf { it.isNotBlank() }
                 ?: return "media_${System.currentTimeMillis()}.$ext"
             if ('.' in seg) seg else "$seg.$ext"

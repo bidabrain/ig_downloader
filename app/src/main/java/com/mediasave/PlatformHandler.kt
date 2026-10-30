@@ -106,6 +106,19 @@ interface PlatformHandler {
     fun onBridgeData(key: String, data: String, ctx: HandlerContext) {}
 
     /**
+     * Optional: resolve media with plain HTTP requests, without loading the WebView.
+     * Called on a background thread right after a new URL is committed. Report media via
+     * [ctx] and return true on success; return false to fall back to the WebView flow.
+     */
+    fun resolveDirect(url: String, ctx: HandlerContext): Boolean = false
+
+    /**
+     * Optional: an alternative URL to retry when downloading [url] fails
+     * (e.g. a lower-resolution variant). Return null for no retry.
+     */
+    fun downloadFallbackUrl(url: String): String? = null
+
+    /**
      * Return the User-Agent string the WebView should use for this URL,
      * or null to use the system default. Called from loadUrl() so the UA
      * is set correctly before the WebView starts the request.

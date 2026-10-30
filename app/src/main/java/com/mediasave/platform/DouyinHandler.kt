@@ -14,13 +14,19 @@ import java.net.URL
 private const val DOUYIN_MOBILE_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) " +
     "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
 
+// iesdouyin.com only embeds window._ROUTER_DATA in the share page for an iPhone UA.
+private const val SHARE_PAGE_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) " +
+    "AppleWebKit/605.1.15 (KHTML, like Gecko) EdgiOS/121.0.2277.107 Version/17.0 Mobile/15E148 Safari/604.1"
+
 private const val DESKTOP_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 /**
  * Handles 抖音 (Douyin) video and image-set downloads.
  *
- * Strategy:
+ * Primary: [resolveDirect] parses the iesdouyin share page over plain HTTP.
+ *
+ * WebView fallback strategy (only when resolveDirect fails):
  *  1. Short link → iesdouyin.com/share/video/ID
  *  2. onPageFinished: switch UA to DESKTOP_UA, navigate to www.douyin.com/video/ID
  *  3. onInterceptRequestFull catches the MAIN FRAME HTML request for douyin.com/video/ID,
@@ -84,6 +90,106 @@ class DouyinHandler : PlatformHandler {
     }
 
     override fun matches(url: String) = isDouyinUrl(url)
+
+    // ── Direct HTTP resolver (primary path) ───────────────────────────────────
+    // Same approach as nu1lkali/douyin_download_helper: resolve the aweme ID, fetch
+    // iesdouyin.com/share/video/ID/ with an iPhone UA (needed for _ROUTER_DATA to be
+    // embedded), and read item_list[0]. No WebView, cookies or signatures involved.
+    // If this fails, MainActivity falls back to the WebView flow below.
+
+    override fun resolveDirect(url: String, ctx: HandlerContext): Boolean {
+        val id = awemeIdIn(url) ?: awemeIdIn(followRedirects(url)) ?: run {
+            Log.d("DouyinHandler", "resolveDirect: no aweme id for $url"); return false
+        }
+        val item = fetchShareItem(id) ?: return false
+        return reportShareItem(item, ctx)
+    }
+
+    override fun downloadFallbackUrl(url: String): String? =
+        if (url.contains("ratio=1080p")) url.replace("ratio=1080p", "ratio=720p") else null
+
+    private fun awemeIdIn(url: String): String? =
+        listOf(
+            Regex("""/(?:video|note|slides)/(\d+)"""),
+            Regex("""[?&]modal_id=(\d+)"""),
+            Regex("""[?&]vid=(\d+)"""),
+        ).firstNotNullOfOrNull { it.find(url)?.groupValues?.get(1) }
+
+    /** Follow short-link redirects by hand (cross-host) until an aweme ID shows up. */
+    private fun followRedirects(url: String): String {
+        var current = url
+        repeat(10) {
+            if (awemeIdIn(current) != null) return current
+            val conn = URL(current).openConnection() as HttpURLConnection
+            try {
+                conn.instanceFollowRedirects = false
+                conn.connectTimeout = 10_000
+                conn.readTimeout    = 10_000
+                conn.setRequestProperty("User-Agent", SHARE_PAGE_UA)
+                if (conn.responseCode !in 300..399) return current
+                val loc = conn.getHeaderField("Location") ?: return current
+                current = URL(URL(current), loc).toString()
+            } finally {
+                conn.disconnect()
+            }
+        }
+        return current
+    }
+
+    private fun fetchShareItem(id: String): JSONObject? = try {
+        val conn = URL("https://www.iesdouyin.com/share/video/$id/").openConnection() as HttpURLConnection
+        conn.connectTimeout = 15_000
+        conn.readTimeout    = 15_000
+        conn.setRequestProperty("User-Agent",      SHARE_PAGE_UA)
+        conn.setRequestProperty("Accept",          "text/html,application/xhtml+xml,*/*;q=0.8")
+        conn.setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9")
+        val code = conn.responseCode
+        val html = if (code == 200) conn.inputStream.bufferedReader().readText() else ""
+        conn.disconnect()
+        Log.d("DouyinHandler", "fetchShareItem id=$id code=$code len=${html.length}")
+
+        val json = Regex("""window\._ROUTER_DATA\s*=\s*(.*?)</script>""", RegexOption.DOT_MATCHES_ALL)
+            .find(html)?.groupValues?.get(1)?.trim()
+        val loaderData = json?.let { JSONObject(it).optJSONObject("loaderData") }
+        val page = listOf("video_(id)/page", "note_(id)/page", "slides_(id)/page")
+            .firstNotNullOfOrNull { loaderData?.optJSONObject(it)?.optJSONObject("videoInfoRes") }
+        val item = page?.optJSONArray("item_list")?.optJSONObject(0)
+        Log.d("DouyinHandler", "fetchShareItem found=${item != null}")
+        item
+    } catch (e: Exception) {
+        Log.e("DouyinHandler", "fetchShareItem exception", e)
+        null
+    }
+
+    private fun reportShareItem(item: JSONObject, ctx: HandlerContext): Boolean {
+        val awemeType = item.optInt("aweme_type", 0)
+        val images = item.optJSONArray("images")
+        if (awemeType == 2 || awemeType == 68 || (images?.length() ?: 0) > 0) {
+            val urls = (0 until (images?.length() ?: 0)).mapNotNull { i ->
+                images!!.optJSONObject(i)?.optJSONArray("url_list")?.optString(0)?.takeIf { it.isNotEmpty() }
+            }
+            if (urls.isEmpty()) return false
+            urls.forEach { ctx.reportMedia("image", it) }
+            ctx.setStatus("找到 ${urls.size} 张图片，点击下载全部保存")
+            return true
+        }
+
+        val playAddr = item.optJSONObject("video")?.optJSONObject("play_addr") ?: return false
+        // playwm → play drops the watermark; ask for 1080p (downloads retry at 720p).
+        var videoUrl = playAddr.optJSONArray("url_list")?.optString(0).orEmpty()
+            .replace("playwm", "play")
+            .replace(Regex("""ratio=\d+p"""), "ratio=1080p")
+        if (videoUrl.isEmpty()) {
+            val uri = playAddr.optString("uri")
+            if (uri.isNotEmpty())
+                videoUrl = "https://aweme.snssdk.com/aweme/v1/play/?video_id=$uri&ratio=1080p&line=0"
+        }
+        if (videoUrl.isEmpty()) return false
+        Log.d("DouyinHandler", "resolveDirect video=${videoUrl.take(120)}")
+        ctx.reportMedia("video", videoUrl)
+        ctx.setStatus("找到视频，点击下载全部保存")
+        return true
+    }
 
     // Use desktop UA when loading www.douyin.com so the SPA's sub-resource requests
     // (including aweme/detail) carry a desktop User-Agent header, and navigator.userAgent
@@ -481,6 +587,7 @@ class DouyinHandler : PlatformHandler {
     override fun buildDownloadHeaders(itemUrl: String, cookie: String?): Map<String, String> =
         mapOf(
             "User-Agent"      to DOUYIN_MOBILE_UA,
+            "Referer"         to "https://www.douyin.com/",
             "Range"           to "bytes=0-",
             "Accept"          to "*/*",
             "Accept-Language" to "zh-CN,zh;q=0.9"
