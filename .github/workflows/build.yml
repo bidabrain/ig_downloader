@@ -24,7 +24,7 @@ jobs:
         run: chmod +x gradlew
 
       # Sign with the same debug key every time so new releases install over old ones.
-      # AGP uses ~/.android/debug.keystore for debug builds by default.
+      # app/build.gradle picks the keystore up from DEBUG_KEYSTORE_PATH.
       - name: Restore signing keystore
         env:
           DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
@@ -33,16 +33,24 @@ jobs:
             echo "::error::Secret DEBUG_KEYSTORE_BASE64 is not set; refusing to release an APK signed with a random key."
             exit 1
           fi
-          mkdir -p ~/.android
-          echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
+          echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/debug.keystore"
+          echo "DEBUG_KEYSTORE_PATH=$RUNNER_TEMP/debug.keystore" >> "$GITHUB_ENV"
 
       - name: Build debug APK
         run: ./gradlew assembleDebug
 
-      - name: Show APK signing certificate
+      - name: Verify APK signing certificate
+        env:
+          EXPECTED_CERT_SHA256: 60959ad9bb344ee2e133fe1280508b05c515f932ff66af13e53864a3cd1e98d9
         run: |
           APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
-          "$APKSIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | grep "SHA-256"
+          ACTUAL=$("$APKSIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk \
+            | grep "certificate SHA-256 digest" | head -1 | awk '{print $NF}')
+          echo "APK signing cert SHA-256: $ACTUAL"
+          if [ "$ACTUAL" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::APK is signed with an unexpected key (expected $EXPECTED_CERT_SHA256)."
+            exit 1
+          fi
 
       - name: Get version name
         id: version

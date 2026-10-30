@@ -11,8 +11,22 @@ android {
         applicationId "com.mediasave"
         minSdk 24
         targetSdk 34
-        versionCode 29
-        versionName "1.28"
+        versionCode 30
+        versionName "1.29"
+    }
+
+    // CI sets DEBUG_KEYSTORE_PATH so every release is signed with the same key;
+    // local builds fall back to the default ~/.android/debug.keystore.
+    signingConfigs {
+        debug {
+            def ciKeystore = System.getenv("DEBUG_KEYSTORE_PATH")
+            if (ciKeystore) {
+                storeFile file(ciKeystore)
+                storePassword "android"
+                keyAlias "androiddebugkey"
+                keyPassword "android"
+            }
+        }
     }
 
     buildTypes {
