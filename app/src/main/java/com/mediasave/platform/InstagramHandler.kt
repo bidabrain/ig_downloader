@@ -42,31 +42,69 @@ class InstagramHandler : PlatformHandler {
 
     override fun onFoundAppId(id: String) { if (id.isNotBlank()) appId = id }
 
+    // Shortcode whose in-page API fetch is in flight; results for any other shortcode are stale.
+    private var pendingShortcode: String? = null
+
     override fun onPageFinished(url: String, ctx: HandlerContext) {
         ctx.injectJs(appIdFinderJs)
         val shortcode = shortcodeFrom(url)
         isPostPage = shortcode != null
         if (shortcode != null) {
             ctx.setStatus("Fetching media for post $shortcode…")
-            ctx.runBackground {
-                val cookie = ctx.getCookie("https://www.instagram.com") ?: ""
-                val media = tryGraphQlFetch(shortcode, cookie)
-                ctx.runOnUi {
-                    if (media.isNotEmpty()) {
-                        media.forEach { ctx.reportMedia(it.type, it.url) }
-                        ctx.setStatus("Found ${media.size} item(s) — press Download All to save")
-                    } else {
-                        ctx.setStatus("Scanning page data… tap Download when count appears")
-                        ctx.injectJs(postMediaFinderJs)
-                        ctx.postDelayed(2000) { ctx.injectJs(postMediaFinderJs) }
-                        ctx.postDelayed(4000) { ctx.injectJs(postMediaFinderJs) }
-                    }
+            // Primary path: call Instagram's API from inside the page so the request carries
+            // the real session cookies and the page's LSD/DTSG tokens (mirrors ig-helper).
+            pendingShortcode = shortcode
+            ctx.injectJs(inPageFetchJs(shortcode))
+            // Safety net in case the injected script never reports back.
+            ctx.postDelayed(15_000) {
+                if (pendingShortcode == shortcode) {
+                    pendingShortcode = null
+                    fetchNativeThenScan(shortcode, ctx)
                 }
             }
         } else {
             ctx.setStatus("Page loaded — press Download All when ready")
             ctx.injectJs(mediaFinderJs)
             ctx.postDelayed(1200) { ctx.injectJs(mediaFinderJs) }
+        }
+    }
+
+    override fun onBridgeData(key: String, data: String, ctx: HandlerContext) {
+        if (key != "ig_item" && key != "ig_fail") return
+        val shortcode = pendingShortcode ?: return
+        val (sc, payload) = data.split('\n', limit = 2).let { it[0] to it.getOrElse(1) { "" } }
+        if (sc != shortcode) return
+        pendingShortcode = null
+
+        val media = if (key == "ig_item") try {
+            val item = JSONObject(payload)
+            val username = item.optJSONObject("user")?.optString("username") ?: "instagram"
+            mediaItemsFromV1Item(item, username, shortcode)
+        } catch (_: Exception) { emptyList() } else emptyList()
+
+        if (media.isNotEmpty()) {
+            media.forEach { ctx.reportMedia(it.type, it.url) }
+            ctx.setStatus("Found ${media.size} item(s) — press Download All to save")
+        } else {
+            fetchNativeThenScan(shortcode, ctx)
+        }
+    }
+
+    private fun fetchNativeThenScan(shortcode: String, ctx: HandlerContext) {
+        ctx.runBackground {
+            val cookie = ctx.getCookie("https://www.instagram.com") ?: ""
+            val media = tryGraphQlFetch(shortcode, cookie)
+            ctx.runOnUi {
+                if (media.isNotEmpty()) {
+                    media.forEach { ctx.reportMedia(it.type, it.url) }
+                    ctx.setStatus("Found ${media.size} item(s) — press Download All to save")
+                } else {
+                    ctx.setStatus("Scanning page data… tap Download when count appears")
+                    ctx.injectJs(postMediaFinderJs)
+                    ctx.postDelayed(2000) { ctx.injectJs(postMediaFinderJs) }
+                    ctx.postDelayed(4000) { ctx.injectJs(postMediaFinderJs) }
+                }
+            }
         }
     }
 
@@ -218,6 +256,170 @@ class InstagramHandler : PlatformHandler {
     }
 
     // ── JS snippets ───────────────────────────────────────────────────────────
+
+    /**
+     * Runs inside the post page and reports the post's v1 media item back via
+     * AndroidBridge.postData("ig_item" | "ig_fail", "<shortcode>\n<json>").
+     * 1. GraphQL PolarisPostRootQuery POST with the page's LSD/DTSG/SiteData tokens.
+     * 2. /api/v1/media/<id>/info/ with the media id decoded from the shortcode.
+     * Request shape follows SN-Koarashi/ig-helper getMediaList()/getMediaInfo().
+     */
+    private fun inPageFetchJs(shortcode: String) = """
+        (function() {
+            var SC = '$shortcode';
+            function done(key, payload) {
+                try { AndroidBridge.postData(key, SC + '\n' + (payload || '')); } catch (e) {}
+            }
+            function jsonScripts(sjsOnly) {
+                return document.querySelectorAll(sjsOnly
+                    ? 'script[type="application/json"][data-sjs]'
+                    : 'script[type="application/json"]');
+            }
+            function findInScripts(re, sjsOnly) {
+                var r = null;
+                jsonScripts(sjsOnly).forEach(function(s) {
+                    if (r) return;
+                    var m = (s.textContent || '').match(re);
+                    if (m) r = m[1];
+                });
+                return r;
+            }
+            function cookie(n) {
+                var m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)'));
+                return m ? decodeURIComponent(m[1]) : '';
+            }
+            function findConfig(data, name) {
+                var stack = [data];
+                while (stack.length) {
+                    var node = stack.pop();
+                    if (Array.isArray(node)) {
+                        if (node[0] === name && node.length >= 3 && node[2] &&
+                            typeof node[2] === 'object' && !Array.isArray(node[2])) return node[2];
+                        for (var i = 0; i < node.length; i++) stack.push(node[i]);
+                    } else if (node && typeof node === 'object') {
+                        for (var k in node) stack.push(node[k]);
+                    }
+                }
+                return null;
+            }
+            function siteData() {
+                var r = null;
+                jsonScripts(true).forEach(function(s) {
+                    if (r) return;
+                    var t = s.textContent || '';
+                    if (t.indexOf('"SiteData",[],{') < 0) return;
+                    try { r = findConfig(JSON.parse(t), 'SiteData'); } catch (e) {}
+                });
+                return r || {};
+            }
+            function rand6() {
+                return Math.floor(Math.random() * 2147483648).toString(36).padStart(6, '0');
+            }
+            function mediaIdFromShortcode(sc) {
+                var abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+                var id = BigInt(0);
+                sc.substring(0, 11).split('').forEach(function(c) {
+                    id = id * BigInt(64) + BigInt(abc.indexOf(c));
+                });
+                return id.toString();
+            }
+
+            var appId = findInScripts(/"APP_ID":"([0-9]+)"/, false) || '936619743392459';
+            var lsd   = findInScripts(/\["LSD",\[\],\{"token":"([0-9a-z_-]+)"\}/i, true) || '';
+            var dtsg  = findInScripts(/"DTSGInitialData",\[\],\{"token":"([0-9a-z_:-]+)"\}/i, true) || '';
+            var bloks = findInScripts(/"WebBloksVersioningID",\[\],\{"versioningID":"([0-9a-z_-]+)"\}/i, true) || '';
+            var csrf  = cookie('csrftoken');
+
+            function viaGraphql() {
+                var sd = siteData();
+                var p = new URLSearchParams();
+                p.append('av', cookie('ds_user_id') || '0');
+                p.append('__d', 'www');
+                p.append('__user', '0');
+                p.append('__a', '1');
+                p.append('__req', '1');
+                p.append('__hs', sd.haste_session || '');
+                p.append('dpr', String(sd.pr || window.devicePixelRatio || 1));
+                p.append('__ccg', 'EXCELLENT');
+                p.append('__rev', String(sd.client_revision || ''));
+                p.append('__s', rand6() + ':' + rand6() + ':' + rand6());
+                p.append('__hsi', String(sd.hsi || ''));
+                p.append('__comet_req', String(sd.comet_env || ''));
+                p.append('__crn', 'comet.igweb.PolarisFeedRoute');
+                if (dtsg) {
+                    p.append('fb_dtsg', dtsg);
+                    var sum = 0;
+                    for (var i = 0; i < dtsg.length; i++) sum += dtsg.charCodeAt(i);
+                    p.append('jazoest', '2' + sum);
+                }
+                p.append('lsd', lsd);
+                p.append('__spin_r', String(sd.__spin_r || ''));
+                p.append('__spin_b', String(sd.__spin_b || ''));
+                p.append('__spin_t', String(sd.__spin_t || ''));
+                p.append('fb_api_caller_class', 'RelayModern');
+                p.append('fb_api_req_friendly_name', 'PolarisPostRootQuery');
+                p.append('server_timestamps', 'true');
+                p.append('variables', JSON.stringify({
+                    shortcode: SC,
+                    __relay_internal__pv__PolarisShortDramaEnabledrelayprovider: true,
+                    __relay_internal__pv__PolarisThreadsStyleCommentsEnabledrelayprovider: false,
+                    __relay_internal__pv__PolarisMultiCaptionCarouselEnabledrelayprovider: true
+                }));
+                p.append('doc_id', '39422285384081769');
+                return fetch('/graphql/query', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-IG-App-ID': appId,
+                        'X-CSRFToken': csrf,
+                        'X-FB-Friendly-Name': 'PolarisPostRootQuery',
+                        'X-FB-LSD': lsd,
+                        'X-Root-Field-Name': 'xdt_api__v1__media__shortcode__web_info',
+                        'X-Bloks-Version-ID': bloks,
+                        'X-ASBD-ID': '359341'
+                    },
+                    body: p.toString()
+                }).then(function(r) { return r.json(); }).then(function(j) {
+                    return j.data.xdt_api__v1__media__shortcode__web_info.items[0] || null;
+                });
+            }
+
+            function viaMediaInfo() {
+                return fetch('/api/v1/media/' + mediaIdFromShortcode(SC) + '/info/', {
+                    credentials: 'include',
+                    headers: {
+                        'X-IG-App-ID': appId,
+                        'X-CSRFToken': csrf,
+                        'X-ASBD-ID': '359341',
+                        'X-IG-WWW-Claim': sessionStorage.getItem('www-claim-v2') || '0',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                }).then(function(r) { return r.json(); }).then(function(j) {
+                    return (j.items && j.items[0]) || null;
+                });
+            }
+
+            function attempt(fn, label) {
+                try {
+                    return fn().catch(function(e) {
+                        console.log('[mediasave] ' + label + ' failed: ' + e);
+                        return null;
+                    });
+                } catch (e) {
+                    console.log('[mediasave] ' + label + ' threw: ' + e);
+                    return Promise.resolve(null);
+                }
+            }
+
+            attempt(viaGraphql, 'graphql')
+                .then(function(item) { return item || attempt(viaMediaInfo, 'media info'); })
+                .then(function(item) {
+                    if (item) done('ig_item', JSON.stringify(item)); else done('ig_fail');
+                })
+                .catch(function() { done('ig_fail'); });
+        })();
+    """.trimIndent()
 
     private val appIdFinderJs = """
         (function() {

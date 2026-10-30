@@ -153,6 +153,11 @@ class MainActivity : AppCompatActivity() {
         fun foundAppId(id: String) {
             currentHandler?.onFoundAppId(id)
         }
+
+        @JavascriptInterface
+        fun postData(key: String, data: String) {
+            runOnUiThread { currentHandler?.onBridgeData(key, data, makeContext()) }
+        }
     }
 
     // ── Activity lifecycle ────────────────────────────────────────────────────
@@ -286,6 +291,8 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
+        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0)
+            WebView.setWebContentsDebuggingEnabled(true)
         with(webView.settings) {
             javaScriptEnabled    = true
             domStorageEnabled    = true
@@ -333,6 +340,17 @@ class MainActivity : AppCompatActivity() {
                 CookieManager.getInstance().flush()
 
                 when {
+                    isSaveLoginPrompt(url) -> {
+                        // Instagram's "Save your login info?" interstitial. The session cookie
+                        // is already set, so skip it and continue to the requested page.
+                        justLoggedIn = false
+                        val next = Uri.parse(url).getQueryParameter("next")
+                            ?.takeIf { it.startsWith("/") }
+                            ?.let { "https://www.instagram.com$it" }
+                        val target = pendingUrl ?: next ?: "https://www.instagram.com/"
+                        downloadTriggered = false
+                        webView.postDelayed({ webView.loadUrl(target, EXTRA_HEADERS) }, 300)
+                    }
                     isLoginPage(url) -> {
                         justLoggedIn = true
                         statusText.text = getString(R.string.status_login_prompt)
@@ -476,6 +494,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ── Navigation helpers ────────────────────────────────────────────────────
+
+    private fun isSaveLoginPrompt(url: String) =
+        url.contains("instagram.com/accounts/onetap")
 
     private fun isLoginPage(url: String) =
         url.contains("accounts/login") || url.contains("/login") ||
@@ -857,7 +878,8 @@ class MainActivity : AppCompatActivity() {
         try { webView.clearCache(true) }       catch (_: Exception) {}
         try { webView.clearHistory() }          catch (_: Exception) {}
         try { webView.clearFormData() }         catch (_: Exception) {}
-        try { WebStorage.getInstance().deleteAllData() } catch (_: Exception) {}
+        // WebStorage (localStorage/IndexedDB) is intentionally kept: sites store login
+        // state there, and wiping it makes Instagram ask to "save login info" every time.
         thumbnailCache.clear()
         try { cacheDir?.let { clearDirContents(it) } }         catch (_: Exception) {}
         try { externalCacheDir?.let { clearDirContents(it) } } catch (_: Exception) {}

@@ -106,6 +106,13 @@ interface PlatformHandler {
     fun onFoundAppId(id: String) {}
 
     /**
+     * Optional: called on the main thread when injected JS fires AndroidBridge.postData(key, data).
+     * Lets a handler run API requests inside the page (same-origin, real cookies and tokens)
+     * and receive the raw result back.
+     */
+    fun onBridgeData(key: String, data: String, ctx: HandlerContext) {}
+
+    /**
      * Return the User-Agent string the WebView should use for this URL,
      * or null to use the system default. Called from loadUrl() so the UA
      * is set correctly before the WebView starts the request.
