@@ -17,7 +17,6 @@ An Android app for downloading photos and videos from Instagram, X (Twitter), Re
 - Supports multi-photo carousel posts on all platforms
 - Thumbnail previews — every found item shows a preview image in the list
 - Selective download — pick exactly which items to save with per-item checkboxes
-- Optional third-party resolver for Douyin (greenvideo.cc), toggleable in Settings — also captures the separate audio track
 - Persistent login — log in once per platform, session is saved automatically
 - Share a URL directly from any supported app to open it instantly
 - Press back twice to exit — temporary cache is cleared, downloaded files are kept
@@ -96,17 +95,14 @@ Once media is found, each item appears in a list with a **thumbnail preview** an
 
 If you are not logged in, the app will show the platform's login page. Log in once — your session is saved and you won't need to log in again.
 
-> **Douyin note:** A guest session works for most public videos without logging in. Login is only required for private accounts. You can also enable an optional third-party resolver — see [Settings & About](#settings--about) below.
+> **Douyin note:** A guest session works for most public videos without logging in. Login is only required for private accounts.
 
-> **Audio:** When the third-party resolver is used, Douyin video posts also expose their separate audio track as an `.mp3` item in the list, which you can select or skip like any other item.
+### About
 
-### Settings & About
-
-Tap the **gear icon** in the top-right toolbar to open Settings / About:
+Tap the **gear icon** in the top-right toolbar to open the About page:
 
 - App overview and version number
 - Link to this source repository
-- **Use third-party site for Douyin** — a pill toggle. When enabled, Douyin links are resolved via [greenvideo.cc](https://greenvideo.cc/) instead of the built-in extractor (the built-in mechanism is unchanged when the toggle is off). The app loads greenvideo.cc in a hidden WebView, submits the link automatically, and captures the resulting watermark-free video, audio, and image direct-links into the download list. No login is required.
 
 ### Exiting & cache
 

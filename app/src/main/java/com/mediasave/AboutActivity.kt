@@ -8,7 +8,6 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.card.MaterialCardView
-import com.google.android.material.switchmaterial.SwitchMaterial
 
 class AboutActivity : AppCompatActivity() {
 
@@ -18,13 +17,6 @@ class AboutActivity : AppCompatActivity() {
 
         findViewById<MaterialToolbar>(R.id.aboutToolbar)
             .setNavigationOnClickListener { finish() }
-
-        // ── Settings: third-party Douyin toggle ──────────────────────────────────
-        val tpSwitch = findViewById<SwitchMaterial>(R.id.thirdPartyDouyinSwitch)
-        tpSwitch.isChecked = AppSettings.thirdPartyDouyin
-        tpSwitch.setOnCheckedChangeListener { _, checked ->
-            AppSettings.setThirdPartyDouyin(this, checked)
-        }
 
         // ── About info ───────────────────────────────────────────────────────────
         val versionName = try {

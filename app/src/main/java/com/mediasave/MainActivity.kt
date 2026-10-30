@@ -27,7 +27,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.mediasave.platform.DouyinHandler
-import com.mediasave.platform.DouyinGreenVideoHandler
 import com.mediasave.platform.InstagramHandler
 import com.mediasave.platform.RedNoteHandler
 import com.mediasave.platform.TwitterHandler
@@ -83,7 +82,6 @@ class MainActivity : AppCompatActivity() {
 
     // ── Platform registry ─────────────────────────────────────────────────────
     private val handlers: List<PlatformHandler> = listOf(
-        DouyinGreenVideoHandler(),   // wins over DouyinHandler only when the toggle is on
         DouyinHandler(),
         RedNoteHandler(),
         TwitterHandler(),
@@ -96,8 +94,6 @@ class MainActivity : AppCompatActivity() {
             "Accept-Language"  to "en-US,en;q=0.9",
             "Accept"           to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         )
-        const val ACTION_OPEN_BROWSER = "com.mediasave.OPEN_BROWSER"
-        const val EXTRA_BROWSER_URL   = "browser_url"
         const val REQ_WRITE_STORAGE = 1001
         const val INFO_IDLE         = 0
         const val INFO_LOADING      = 1
@@ -165,7 +161,6 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        AppSettings.load(this)
         setContentView(R.layout.activity_main)
 
         toolbar                = findViewById(R.id.toolbar)
@@ -272,14 +267,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleIntent(intent: Intent) {
-        // Open a specific page in the in-app browser (e.g. greenvideo.cc).
-        if (intent.action == ACTION_OPEN_BROWSER) {
-            val browserUrl = intent.getStringExtra(EXTRA_BROWSER_URL) ?: return
-            webView.settings.userAgentString = WEB_UA
-            webView.loadUrl(browserUrl, EXTRA_HEADERS)
-            showBrowser(true)
-            return
-        }
         val url = intent.getStringExtra(Intent.EXTRA_TEXT) ?: intent.data?.toString() ?: return
         if (handlers.any { it.matches(url) }) {
             urlInput.setText(url)
@@ -536,9 +523,7 @@ class MainActivity : AppCompatActivity() {
         mediaListContainer.removeAllViews()
 
         showBrowser(false)
-        // A handler may redirect the initial load (e.g. to a third-party parser site).
-        val loadTarget = currentHandler?.initialLoadUrl(finalUrl) ?: finalUrl
-        webView.loadUrl(loadTarget, EXTRA_HEADERS)
+        webView.loadUrl(finalUrl, EXTRA_HEADERS)
     }
 
     /** Update the compact header row (platform pill + count + type). */
@@ -553,8 +538,6 @@ class MainActivity : AppCompatActivity() {
         val typeText = when {
             "video" in types && "image" in types -> getString(R.string.media_type_mixed)
             "video" in types                     -> getString(R.string.media_type_video)
-            "image" in types                     -> getString(R.string.media_type_image)
-            "audio" in types                     -> getString(R.string.media_type_audio)
             else                                 -> getString(R.string.media_type_image)
         }
 
@@ -601,7 +584,6 @@ class MainActivity : AppCompatActivity() {
         platform.text = platformNameFor(item.source)
         type.text     = when (item.type) {
             "video" -> getString(R.string.media_type_video)
-            "audio" -> getString(R.string.media_type_audio)
             else    -> getString(R.string.media_type_image)
         }
 
@@ -629,7 +611,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun fetchThumbnail(item: MediaItem): Bitmap? = when (item.type) {
         "video" -> fetchVideoThumbnail(item)
-        "audio" -> null                       // audio has no frame to show; keep placeholder
         else    -> fetchImageThumbnail(item)
     }
 
@@ -835,7 +816,6 @@ class MainActivity : AppCompatActivity() {
     private fun buildFilename(url: String, type: String): String {
         val ext = when (type) {
             "video" -> "mp4"
-            "audio" -> "mp3"
             else    -> "jpg"
         }
         return try {
