@@ -23,8 +23,26 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # Sign with the same debug key every time so new releases install over old ones.
+      # AGP uses ~/.android/debug.keystore for debug builds by default.
+      - name: Restore signing keystore
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$DEBUG_KEYSTORE_BASE64" ]; then
+            echo "::error::Secret DEBUG_KEYSTORE_BASE64 is not set; refusing to release an APK signed with a random key."
+            exit 1
+          fi
+          mkdir -p ~/.android
+          echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
+
       - name: Build debug APK
         run: ./gradlew assembleDebug
+
+      - name: Show APK signing certificate
+        run: |
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
+          "$APKSIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | grep "SHA-256"
 
       - name: Get version name
         id: version
