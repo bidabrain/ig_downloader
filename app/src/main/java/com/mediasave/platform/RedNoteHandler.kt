@@ -28,7 +28,7 @@ class RedNoteHandler : PlatformHandler {
 
     override fun onInterceptRequest(url: String, ctx: HandlerContext) {
         // Capture direct MP4s from RedNote's video CDN as a fallback to JS extraction.
-        if (!url.contains("xhscdn.com")) return
+        if (!url.contains("xhscdn.com") && !url.contains("rednotecdn.com")) return
         if (!url.contains("sns-video")) return
         // Skip HLS manifests and segments — these can't be saved as a single file.
         if (url.contains(".m3u8") || url.contains(".ts?") || url.contains("/ts/")) return
@@ -123,14 +123,18 @@ class RedNoteHandler : PlatformHandler {
                 // Image post — reconstruct high-quality URL via XHS-Downloader token method
                 var images = note.imageList;
                 if (!images || !images.length) return;
+                // token = "/".join(url.split("/")[5:]).split("!")[0] — only fits the old
+                // sns-webpic URLs; newer pages (rednote.com) use sns-i*.rednotecdn.com/<fileId>.
+                var urlToken = function(url) {
+                    return (url || '').split('/').slice(5).join('/').split('!')[0];
+                };
                 images.forEach(function(item) {
-                    var url = item.urlDefault || item.url || '';
-                    if (!url) return;
-                    // token = "/".join(url.split("/")[5:]).split("!")[0]
-                    var token = url.split('/').slice(5).join('/').split('!')[0];
+                    var token = item.fileId || urlToken(item.urlDefault) || urlToken(item.urlPre);
                     if (token)
                         AndroidBridge.foundMedia('image',
                             'https://ci.xiaohongshu.com/' + token + '?imageView2/format/jpeg');
+                    else if (item.urlDefault || item.url)
+                        AndroidBridge.foundMedia('image', item.urlDefault || item.url);
                 });
             }
         })();
