@@ -1,0 +1,14 @@
+MediaSave lets you save photos and videos from Instagram, X (Twitter), RedNote (小红书 / XiaoHongShu) and Douyin (抖音) to your phone.
+
+<b>Features</b>
+<ul>
+<li>Photos, videos and carousels from Instagram posts and reels</li>
+<li>Photos, videos and GIFs from X (Twitter) posts</li>
+<li>Photos and videos from RedNote notes</li>
+<li>Videos and image sets from Douyin, without watermark</li>
+<li>Thumbnail preview for every item, pick exactly which ones to save</li>
+<li>Persistent login: log in once per platform in the built-in browser</li>
+<li>Share a link from any app, or paste it, to open it instantly</li>
+</ul>
+
+Files are saved to Download/&lt;Platform&gt;/ on your device. Logging in is optional for public content and only needed for private posts.

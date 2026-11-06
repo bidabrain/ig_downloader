@@ -11,8 +11,8 @@ android {
         applicationId "com.mediasave"
         minSdk 24
         targetSdk 34
-        versionCode 32
-        versionName "1.31"
+        versionCode 33
+        versionName "1.32"
     }
 
     // CI sets DEBUG_KEYSTORE_PATH so every release is signed with the same key;
@@ -43,6 +43,12 @@ android {
 
     kotlinOptions {
         jvmTarget = '1.8'
+    }
+
+    // Don't embed Google's encrypted dependency metadata block (F-Droid rejects it).
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 }
 

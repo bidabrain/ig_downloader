@@ -1,0 +1,3 @@
+* Douyin: resolve posts over plain HTTP first, no watermark, 1080p with 720p fallback
+* RedNote: fix image extraction for the new rednote.com image URLs
+* CI releases are now signed with a fixed key
