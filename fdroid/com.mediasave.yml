@@ -5,6 +5,7 @@ AntiFeatures:
 Categories:
   - Multimedia
 License: GPL-3.0-only
+AuthorName: bidabrain
 SourceCode: https://github.com/bidabrain/ig_downloader
 IssueTracker: https://github.com/bidabrain/ig_downloader/issues
 
