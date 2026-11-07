@@ -1,9 +1,10 @@
 AntiFeatures:
   NonFreeNet:
-    en-US: Accesses Instagram, X (Twitter), RedNote and Douyin — non-free network services.
+    en-US: Accesses Instagram, X (Twitter), RedNote and Douyin — non-free network
+      services.
     zh-CN: 访问 Instagram、X（Twitter）、小红书和抖音等非自由网络服务。
 Categories:
-  - Multimedia
+  - Download
 License: GPL-3.0-only
 AuthorName: bidabrain
 SourceCode: https://github.com/bidabrain/ig_downloader
