@@ -36,8 +36,8 @@ jobs:
           echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/debug.keystore"
           echo "DEBUG_KEYSTORE_PATH=$RUNNER_TEMP/debug.keystore" >> "$GITHUB_ENV"
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
+      - name: Build release APK (R8, signed with the shared key)
+        run: ./gradlew assembleRelease
 
       - name: Verify APK signing certificate
         env:
