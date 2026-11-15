@@ -16,14 +16,14 @@ RepoType: git
 Repo: https://github.com/bidabrain/ig_downloader.git
 
 Builds:
-  - versionName: '1.32'
-    versionCode: 33
-    commit: 4e13e77fae70d7d926196b0f94b00bcb61b416b4
+  - versionName: '1.33'
+    versionCode: 34
+    commit: 9ea19648a99b710ac8f9e5af2479e6897becceba
     subdir: app
     gradle:
       - yes
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9.]+$
-CurrentVersion: '1.32'
-CurrentVersionCode: 33
+CurrentVersion: '1.33'
+CurrentVersionCode: 34
