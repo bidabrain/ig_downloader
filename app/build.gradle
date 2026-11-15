@@ -11,8 +11,8 @@ android {
         applicationId "com.mediasave"
         minSdk 24
         targetSdk 34
-        versionCode 33
-        versionName "1.32"
+        versionCode 34
+        versionName "1.33"
     }
 
     // CI sets DEBUG_KEYSTORE_PATH so every release is signed with the same key;
@@ -31,7 +31,10 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            // CI signs the release APK with the shared key; F-Droid builds it unsigned.
+            if (System.getenv("DEBUG_KEYSTORE_PATH")) signingConfig signingConfigs.debug
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }

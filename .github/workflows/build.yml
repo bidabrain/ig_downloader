@@ -44,7 +44,7 @@ jobs:
           EXPECTED_CERT_SHA256: 60959ad9bb344ee2e133fe1280508b05c515f932ff66af13e53864a3cd1e98d9
         run: |
           APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
-          ACTUAL=$("$APKSIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk \
+          ACTUAL=$("$APKSIGNER" verify --print-certs app/build/outputs/apk/release/app-release.apk \
             | grep "certificate SHA-256 digest" | head -1 | awk '{print $NF}')
           echo "APK signing cert SHA-256: $ACTUAL"
           if [ "$ACTUAL" != "$EXPECTED_CERT_SHA256" ]; then
@@ -63,5 +63,5 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.name }}
           name: Release ${{ steps.version.outputs.name }}
-          files: app/build/outputs/apk/debug/app-debug.apk
+          files: app/build/outputs/apk/release/app-release.apk
           generate_release_notes: true
